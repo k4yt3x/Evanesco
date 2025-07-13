@@ -20,6 +20,9 @@ This lightweight utility allows you to easily hide any window on your system fro
 
 ## Usage
 
+> [!TIP]
+> You may want to run Evanesco with administrator privileges so you can hide other windows that are running with administrator privileges.
+
 1. [Download](https://github.com/k4yt3x/Evanesco/releases) and extract Evanesco.
 2. Double-click the `Evanesco.exe` file to launch the GUI application.
 3. Click to select windows or processes. You can press and hold `Shift` to select multiple continuous processes or press and hold `Ctrl` to select multiple individual processes.
