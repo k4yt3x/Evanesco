@@ -323,7 +323,7 @@ QList<ProcessInfo> MainWindow::getRunningProcesses() {
     if (Process32First(hSnapshot, &pe32)) {
         do {
             // Skip system processes and current process
-            if (pe32.th32ProcessID <= 4 || pe32.th32ProcessID == GetCurrentProcessId()) {
+            if (pe32.th32ProcessID <= 4) {
                 continue;
             }
 
@@ -394,7 +394,7 @@ BOOL CALLBACK MainWindow::EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
     GetWindowThreadProcessId(hwnd, &pid);
 
     // Skip system processes and the current process
-    if (pid <= 4 || pid == GetCurrentProcessId()) {
+    if (pid <= 4) {
         return TRUE;
     }
 
