@@ -2,6 +2,8 @@
 
 Hide any window from screen capture on Windows.
 
+<img width="592" height="709" alt="Image" src="https://github.com/user-attachments/assets/56659f5b-5795-48ea-8906-321cfdecb4c0" />
+
 ## Description
 
 This lightweight utility allows you to easily hide any window on your system from screenshots, screen recording, screen sharing, malware, anti-cheat, and other tools. Here are some examples:
@@ -10,6 +12,8 @@ This lightweight utility allows you to easily hide any window on your system fro
 - OBS Studio
 - Microsoft Teams
 - Discord
+
+In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate.
 
 ## Roadmap
 
@@ -43,7 +47,7 @@ Examples:
   evanesco unhide --window 12AB34
 ```
 
-## How it Works
+## How It Works
 
 Windows provides the [`SetWindowDisplayAffinity`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity) function to allow applications to specify where the content of their windows can be displayed. Calling this function with the handle of the window we want to hide from screen captures and the display affinity set to `WDA_EXCLUDEFROMCAPTURE` will cause the window to be transparent and invisible to screen capture software.
 
