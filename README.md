@@ -2,7 +2,7 @@
 
 Hide any window from screen capture on Windows.
 
-<img width="592" height="709" alt="Image" src="https://github.com/user-attachments/assets/56659f5b-5795-48ea-8906-321cfdecb4c0" />
+[Demo Video](https://github.com/user-attachments/assets/cd4cb072-0137-4d7b-ba56-bc21c1c269a5)
 
 ## Description
 
