@@ -19,7 +19,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
     connect(ui->actionAbout, &QAction::triggered, this, [&]() {
-        AboutDialog aboutDialog(this);
+        AboutDialog aboutDialog(this, kVersion);
         aboutDialog.exec();
     });
 
