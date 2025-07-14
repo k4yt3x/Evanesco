@@ -21,6 +21,13 @@ qt_add_executable(Evanesco
     "${CMAKE_CURRENT_SOURCE_DIR}/src/resources.rc"
 )
 
+target_compile_options(Evanesco PRIVATE
+    $<$<CONFIG:Release>:-Os>
+)
+target_link_options(Evanesco PRIVATE
+    $<$<CONFIG:Release>:-s>
+)
+
 target_link_libraries(Evanesco
     PRIVATE
         Qt::Core
