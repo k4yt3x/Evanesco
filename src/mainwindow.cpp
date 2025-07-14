@@ -85,16 +85,18 @@ void MainWindow::onTimerTimeout() {
 
 void MainWindow::setupWindowsTable() {
     // Set up table columns
-    ui->windowsTableWidget->setColumnCount(3);
+    ui->windowsTableWidget->setColumnCount(5);
 
     QStringList headers;
-    headers << "Icon" << "Window Title" << "Handle";
+    headers << "Icon" << "Window Title" << "Handle" << "PID" << "Architecture";
     ui->windowsTableWidget->setHorizontalHeaderLabels(headers);
 
     // Set column widths
     ui->windowsTableWidget->setColumnWidth(0, 50);   // Icon column
     ui->windowsTableWidget->setColumnWidth(1, 300);  // Window Title column
     ui->windowsTableWidget->setColumnWidth(2, 120);  // Handle column
+    ui->windowsTableWidget->setColumnWidth(3, 80);   // PID column
+    ui->windowsTableWidget->setColumnWidth(4, 100);  // Architecture column
 
     // Stretch the window title column
     ui->windowsTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -329,19 +331,17 @@ QList<ProcessInfo> MainWindow::getRunningProcesses() {
 
             // Get the main window handle for this process
             HWND mainWindow = ProcUtils::getMainWindowHandle(pe32.th32ProcessID);
-            if (mainWindow != NULL) {
-                ProcessInfo info;
-                info.pid = pe32.th32ProcessID;
-                info.processName = QString::fromWCharArray(pe32.szExeFile);
-                info.executablePath = ProcUtils::getProcessExecutablePath(pe32.th32ProcessID);
-                info.architecture = ProcUtils::getProcessArchitecture(pe32.th32ProcessID);
-                info.icon = getProcessIcon(info.executablePath);
-                info.windowHandle = mainWindow;
+            ProcessInfo info;
+            info.pid = pe32.th32ProcessID;
+            info.processName = QString::fromWCharArray(pe32.szExeFile);
+            info.executablePath = ProcUtils::getProcessExecutablePath(pe32.th32ProcessID);
+            info.architecture = ProcUtils::getProcessArchitecture(pe32.th32ProcessID);
+            info.icon = getProcessIcon(info.executablePath);
+            info.windowHandle = mainWindow;
 
-                // Only add if we have valid basic information
-                if (info.pid > 0 && !info.processName.isEmpty()) {
-                    processes.append(info);
-                }
+            // Only add if we have valid basic information
+            if (info.pid > 0 && !info.processName.isEmpty()) {
+                processes.append(info);
             }
 
         } while (Process32Next(hSnapshot, &pe32));
@@ -401,6 +401,8 @@ BOOL CALLBACK MainWindow::EnumWindowsCallback(HWND hwnd, LPARAM lParam) {
     WindowInfo info;
     info.windowHandle = hwnd;
     info.windowTitle = QString::fromWCharArray(title);
+    info.processId = pid;
+    info.architecture = ProcUtils::getProcessArchitecture(pid);
 
     // Get process icon directly
     QFileIconProvider iconProvider;
@@ -494,6 +496,18 @@ void MainWindow::filterWindowsTable(const QString& filterText) {
         handleItem->setFlags(handleItem->flags() & ~Qt::ItemIsEditable);
         handleItem->setTextAlignment(Qt::AlignCenter);
         table->setItem(i, 2, handleItem);
+
+        // PID column
+        QTableWidgetItem* pidItem = new QTableWidgetItem(QString::number(window.processId));
+        pidItem->setFlags(pidItem->flags() & ~Qt::ItemIsEditable);
+        pidItem->setTextAlignment(Qt::AlignCenter);
+        table->setItem(i, 3, pidItem);
+
+        // Architecture column
+        QTableWidgetItem* archItem = new QTableWidgetItem(window.architecture);
+        archItem->setFlags(archItem->flags() & ~Qt::ItemIsEditable);
+        archItem->setTextAlignment(Qt::AlignCenter);
+        table->setItem(i, 4, archItem);
     }
 
     // Re-enable sorting and restore previous sort state

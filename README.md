@@ -49,17 +49,21 @@ Examples:
 
 ## How It Works
 
+TL;DR: Remote thread + `SetWindowDisplayAffinity`.
+
 Windows provides the [`SetWindowDisplayAffinity`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity) function to allow applications to specify where the content of their windows can be displayed. Calling this function with the handle of the window we want to hide from screen captures and the display affinity set to `WDA_EXCLUDEFROMCAPTURE` will cause the window to be transparent and invisible to screen capture software.
 
 However, there is a security restriction where the `SetWindowDisplayAffinity` function can only be called by the process that owns the window, which means we cannot simply write an application that enumerates all windows and calls `SetWindowDisplayAffinity` to hide the windows. The call originate from the process that owns those windows.
 
-Evanesco bypasses this restriction by injecting a piece of shellcode into the process that owns the window we want to hide. This process is very similar to classic DLL injection. Below is a high-level overview of this process:
+Evanesco bypasses this restriction by injecting a piece of shellcode into the process that owns the window we want to hide. This process is very similar to classic DLL injection. Below is an over-simplified overview of this process:
 
 1. Obtain the address of the `SetWindowDisplayAffinity` function in the target process.
 2. Allocate a chunk of memory in the target process with read/write/execute permissions (`PAGE_EXECUTE_READWRITE`).
 3. Craft the shellcode from a template and insert the function addresses and arguments.
 4. Write the shellcode to the target process with `WriteProcessMemory`.
 5. Call `CreateRemoteThread` to execute the shellcode in the target process.
+
+The actual implementation is more complex. You can read the source code to see how it works in detail.
 
 ## License
 

@@ -44,6 +44,8 @@ struct WindowInfo {
     HWND windowHandle;
     QString windowTitle;
     QIcon icon;
+    DWORD processId;
+    QString architecture;
 };
 
 struct WindowOperationInfo {

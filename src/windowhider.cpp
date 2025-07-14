@@ -16,10 +16,118 @@
 #pragma comment(lib, "psapi.lib")
 
 namespace {
-constexpr DWORD kThreadTimeoutMs = 5000;
+constexpr DWORD kThreadTimeoutMs = 2000;
 constexpr SIZE_T kAlignmentBoundary = 16;
 constexpr SIZE_T kExtraMemoryPadding = 64;
 }  // namespace
+
+// Shellcode definitions - templates for creating mutable copies
+// clang-format off
+static const unsigned char kShellcodeX64[] = {
+    // Reserve shadow space for function call
+    0x48, 0x83, 0xEC, 0x20,       // sub rsp, 32
+
+    // Calculate data address (skip past code to embedded data)
+    0x48, 0x8D, 0x35, 0x2F, 0x00, 0x00, 0x00, // lea rsi, [rip+0x2F] (data offset will be patched)
+
+    // Initialize: hwnd = NULL, successCount = 0
+    0x31, 0xDB,                   // xor ebx, ebx (hwnd = NULL, use rbx to preserve across calls)
+    0x89, 0x5E, 0x20,             // mov [rsi+32], ebx (successCount = 0)
+
+    // Loop start - offset 16 (0x10)
+    // loop_start:
+    0x4D, 0x31, 0xC0,             // xor r8, r8 (lpClassName = NULL)
+    0x4D, 0x31, 0xC9,             // xor r9, r9 (lpWindowName = NULL)
+    0x48, 0x31, 0xC9,             // xor rcx, rcx (hwndParent = NULL)
+    0x48, 0x89, 0xDA,             // mov rdx, rbx (hwndChildAfter)
+    0x48, 0x8B, 0x46, 0x18,       // mov rax, [rsi+24] (FindWindowEx address - offset 24)
+    0xFF, 0xD0,                   // call rax
+    0x48, 0x89, 0xC3,             // mov rbx, rax (store hwnd in rbx)
+
+    // Check if hwnd is NULL (end of enumeration)
+    0x48, 0x85, 0xDB,             // test rbx, rbx
+    0x74, 0x15,                   // jz end_loop
+
+    // Call SetWindowDisplayAffinity(hwnd, affinity)
+    0x48, 0x89, 0xD9,             // mov rcx, rbx (hwnd parameter)
+    0x8B, 0x56, 0x08,             // mov edx, [rsi+8] (affinity - offset 8)
+    0x48, 0x8B, 0x46, 0x10,       // mov rax, [rsi+16] (SetWindowDisplayAffinity address - offset 16)
+    0xFF, 0xD0,                   // call rax
+
+    // Check if call succeeded
+    0x85, 0xC0,                   // test eax, eax
+    0x74, 0x03,                   // jz continue_loop (jump if failed)
+
+    // Increment success count
+    0xFF, 0x46, 0x20,             // inc dword ptr [rsi+32] (successCount++)
+
+    // continue_loop:
+    0xEB, 0xD1,                   // jmp loop_start
+
+    // end_loop:
+    // Clean up and exit
+    0x48, 0x83, 0xC4, 0x20,       // add rsp, 32
+    0xC3,                         // ret
+};
+
+static const unsigned char kShellcodeX86[] = {
+    // Calculate data address (skip past code to embedded data)
+    0xE8, 0x00, 0x00, 0x00, 0x00, // call $+5 (get current EIP)
+    0x58,                         // pop eax (now eax = current address)
+    0x83, 0xC0, 0x1E,             // add eax, 0x1E (data offset will be patched)
+    0x89, 0xC6,                   // mov esi, eax (esi points to data)
+
+    // Initialize successCount = 0
+    0x31, 0xC0,                   // xor eax, eax
+    0x89, 0x46, 0x10,             // mov [esi+16], eax (successCount = 0 - offset 16)
+
+    // Save original stack pointer
+    0x89, 0xE3,                   // mov ebx, esp (save original ESP)
+
+    // Initialize hwnd for first iteration
+    0x31, 0xFF,                   // xor edi, edi (hwnd = NULL for first call)
+
+    // Loop start
+    // loop_start:
+    0x89, 0xDC,                   // mov esp, ebx (restore ESP to original value)
+
+    // Call FindWindowEx with proper stack management
+    0x6A, 0x00,                   // push 0 (lpWindowName = NULL)
+    0x6A, 0x00,                   // push 0 (lpClassName = NULL)
+    0x57,                         // push edi (hwndChildAfter)
+    0x6A, 0x00,                   // push 0 (hwndParent = NULL)
+    0xFF, 0x56, 0x0C,             // call [esi+12] (FindWindowEx address - offset 12)
+    0x89, 0xDC,                   // mov esp, ebx (restore ESP after call)
+    0x89, 0xC7,                   // mov edi, eax (hwnd = result)
+
+    // Check if hwnd is NULL (end of enumeration)
+    0x85, 0xFF,                   // test edi, edi
+    0x74, 0x12,                   // jz end_loop
+
+    // Call SetWindowDisplayAffinity with proper stack management
+    0xFF, 0x76, 0x04,             // push [esi+4] (affinity - offset 4)
+    0x57,                         // push edi (hwnd)
+    0xFF, 0x56, 0x08,             // call [esi+8] (SetWindowDisplayAffinity address - offset 8)
+    0x89, 0xDC,                   // mov esp, ebx (restore ESP after call)
+
+    // Check if call succeeded
+    0x85, 0xC0,                   // test eax, eax
+    0x74, 0x03,                   // jz continue_loop (jump if failed)
+
+    // Increment success count
+    0xFF, 0x46, 0x10,             // inc dword ptr [esi+16] (successCount++)
+
+    // continue_loop:
+    0xEB, 0xDA,                   // jmp loop_start
+
+    // end_loop:
+    // Exit
+    0xC3,                         // ret
+};
+// clang-format on
+
+static const size_t kShellcodeX64Size = sizeof(kShellcodeX64);
+static const size_t kShellcodeX86Size = sizeof(kShellcodeX86);
 
 // Constructor for initializing with a process ID
 WindowHider::WindowHider(DWORD processId) : m_processId(processId), m_targetHwnd(nullptr), m_hProcess(nullptr) {}
@@ -322,31 +430,20 @@ bool WindowHider::resolveFunctionAddresses(FunctionAddresses& addresses) const {
         return false;
     }
 
-    HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
-    if (!hKernel32) {
-        const_cast<WindowHider*>(this)->setWindowsError("Failed to get handle to kernel32.dll");
+    addresses.findWindowEx = GetProcAddress(hUser32, "FindWindowExA");
+    if (!addresses.findWindowEx) {
+        const_cast<WindowHider*>(this)->setWindowsError("Failed to resolve FindWindowExA function");
         return false;
     }
 
-    addresses.getLastError = GetProcAddress(hKernel32, "GetLastError");
-    if (!addresses.getLastError) {
-        const_cast<WindowHider*>(this)->setWindowsError("Failed to resolve GetLastError function");
-        return false;
-    }
-
-    qDebug() << "Successfully resolved function addresses";
+    qDebug() << "Successfully resolved function addresses:"
+             << "SetWindowDisplayAffinity="
+             << QString("0x%1").arg(reinterpret_cast<uintptr_t>(addresses.setWindowDisplayAffinity), 0, 16)
+             << "FindWindowEx=" << QString("0x%1").arg(reinterpret_cast<uintptr_t>(addresses.findWindowEx), 0, 16);
     return true;
 }
 
 bool WindowHider::resolveAddresses32(InjectionData64& injData) const {
-    DWORD getLastErrorAddr32 = 0;
-    if (!ProcUtils::getRemoteAddress32(m_processId, "GetLastError", "kernel32.dll", &getLastErrorAddr32)) {
-        const_cast<WindowHider*>(this)->setLastErrorMessage(
-            "Failed to resolve GetLastError address in target x86 process"
-        );
-        return false;
-    }
-
     DWORD setWindowDisplayAffinityAddr32 = 0;
     if (!ProcUtils::getRemoteAddress32(
             m_processId, "SetWindowDisplayAffinity", "user32.dll", &setWindowDisplayAffinityAddr32
@@ -357,40 +454,47 @@ bool WindowHider::resolveAddresses32(InjectionData64& injData) const {
         return false;
     }
 
-    // Validate that addresses are within 32-bit range and non-zero
-    if (getLastErrorAddr32 == 0 || setWindowDisplayAffinityAddr32 == 0) {
-        const_cast<WindowHider*>(this)->setLastErrorMessage("Invalid 32-bit function addresses resolved");
-        return false;
-    }
-
-    // Validate addresses fit in 32-bit space (should not exceed 0xFFFFFFFF)
-    if (getLastErrorAddr32 > 0xFFFFFFFF || setWindowDisplayAffinityAddr32 > 0xFFFFFFFF) {
+    DWORD findWindowExAddr32 = 0;
+    if (!ProcUtils::getRemoteAddress32(m_processId, "FindWindowExA", "user32.dll", &findWindowExAddr32)) {
         const_cast<WindowHider*>(this)->setLastErrorMessage(
-            QString("Function addresses exceed 32-bit range: GetLastError=0x%1, SetWindowDisplayAffinity=0x%2")
-                .arg(getLastErrorAddr32, 0, 16)
-                .arg(setWindowDisplayAffinityAddr32, 0, 16)
+            "Failed to resolve FindWindowExA address in target x86 process"
         );
         return false;
     }
 
-    injData.getLastErrorAddr = reinterpret_cast<FARPROC>(static_cast<uintptr_t>(getLastErrorAddr32));
+    // Validate that addresses are within 32-bit range and non-zero
+    if (setWindowDisplayAffinityAddr32 == 0 || findWindowExAddr32 == 0) {
+        const_cast<WindowHider*>(this)->setLastErrorMessage("Invalid 32-bit function addresses resolved");
+        return false;
+    }
+
+    // Store as raw DWORD values to avoid pointer size issues
+    // We'll cast them properly during data structure creation
     injData.setWindowDisplayAffinityAddr =
         reinterpret_cast<FARPROC>(static_cast<uintptr_t>(setWindowDisplayAffinityAddr32));
+    injData.findWindowExAddr = reinterpret_cast<FARPROC>(static_cast<uintptr_t>(findWindowExAddr32));
 
-    qDebug() << "Resolved x86 addresses - GetLastError:" << QString("0x%1").arg(getLastErrorAddr32, 0, 16)
-             << ", SetWindowDisplayAffinity:" << QString("0x%1").arg(setWindowDisplayAffinityAddr32, 0, 16);
+    qDebug() << "Resolved x86 addresses - SetWindowDisplayAffinity:"
+             << QString("0x%1").arg(setWindowDisplayAffinityAddr32, 0, 16)
+             << "FindWindowEx:" << QString("0x%1").arg(findWindowExAddr32, 0, 16);
 
     return true;
 }
 
 InjectionData64 WindowHider::createInjectionData(bool hide, const FunctionAddresses& addresses) const {
+    // Validate function addresses
+    if (!addresses.setWindowDisplayAffinity || !addresses.findWindowEx) {
+        qDebug() << "Invalid function addresses detected";
+        return {};
+    }
+
     InjectionData64 injData = {};
-    injData.hwnd = m_targetHwnd;
+    injData.hwnd = NULL;  // Not used anymore as we enumerate all windows
     injData.affinity = hide ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
     injData.setWindowDisplayAffinityAddr = addresses.setWindowDisplayAffinity;
-    injData.result = 0;
-    injData.lastError = 0;
-    injData.getLastErrorAddr = addresses.getLastError;
+    injData.findWindowExAddr = addresses.findWindowEx;
+    injData.successCount = 0;
+
     return injData;
 }
 
@@ -474,11 +578,13 @@ InjectionData32 WindowHider::convertToInjectionData32(const InjectionData64& inj
     InjectionData32 injDataX86 = {};
     injDataX86.hwnd = static_cast<DWORD>(reinterpret_cast<uintptr_t>(injData.hwnd));
     injDataX86.affinity = injData.affinity;
+
+    // Extract the 32-bit addresses that were stored as uintptr_t values
     injDataX86.setWindowDisplayAffinityAddr =
         static_cast<DWORD>(reinterpret_cast<uintptr_t>(injData.setWindowDisplayAffinityAddr));
-    injDataX86.result = 0;
-    injDataX86.lastError = 0;
-    injDataX86.getLastErrorAddr = static_cast<DWORD>(reinterpret_cast<uintptr_t>(injData.getLastErrorAddr));
+    injDataX86.findWindowExAddr = static_cast<DWORD>(reinterpret_cast<uintptr_t>(injData.findWindowExAddr));
+    injDataX86.successCount = 0;
+
     return injDataX86;
 }
 
@@ -528,7 +634,8 @@ bool WindowHider::writeShellcodeToTarget(LPVOID remoteMemory, const std::vector<
 }
 
 bool WindowHider::executeShellcode(LPVOID remoteMemory, bool is64Bit) {
-    qDebug() << "Executing embedded shellcode...";
+    qDebug() << "Executing embedded shellcode at address"
+             << QString("0x%1").arg(reinterpret_cast<uintptr_t>(remoteMemory), 0, 16);
 
     // Create remote thread
     HANDLE hThread = CreateRemoteThread(
@@ -536,7 +643,9 @@ bool WindowHider::executeShellcode(LPVOID remoteMemory, bool is64Bit) {
     );
 
     if (!hThread || hThread == INVALID_HANDLE_VALUE) {
-        setWindowsError("Failed to create remote thread for shellcode execution");
+        DWORD error = GetLastError();
+        setWindowsError("Failed to create remote thread for shellcode execution", error);
+        qDebug() << "CreateRemoteThread failed with error:" << error;
         return false;
     }
 
@@ -581,14 +690,13 @@ bool WindowHider::readAndValidateResults(LPVOID remoteMemory, bool is64Bit, DWOR
 
     if (is64Bit) {
         InjectionData64 resultData;
+
         if (ReadProcessMemory(m_hProcess, dataAddr, &resultData, sizeof(InjectionData64), &bytesRead)) {
-            QString lastErrorStr = getWindowsErrorString(resultData.lastError);
-            qDebug() << "x64 result - Return value:" << resultData.result << ", LastError:" << lastErrorStr
-                     << ", Thread exit code:" << exitCode;
-            success = (exitCode == 0) && (resultData.result != 0);
-            if (!success && resultData.lastError != 0) {
+            qDebug() << "x64 successCount:" << resultData.successCount << "exitCode:" << exitCode;
+            success = (exitCode == 0) && (resultData.successCount > 0);
+            if (!success) {
                 const_cast<WindowHider*>(this)->setLastErrorMessage(
-                    QString("SetWindowDisplayAffinity failed with error: %1").arg(lastErrorStr)
+                    QString("No windows were successfully hidden (success count: %1)").arg(resultData.successCount)
                 );
             }
         } else {
@@ -598,14 +706,14 @@ bool WindowHider::readAndValidateResults(LPVOID remoteMemory, bool is64Bit, DWOR
         }
     } else {
         InjectionData32 resultDataX86;
+
         if (ReadProcessMemory(m_hProcess, dataAddr, &resultDataX86, sizeof(InjectionData32), &bytesRead)) {
-            QString lastErrorStr = getWindowsErrorString(resultDataX86.lastError);
-            qDebug() << "x86 result - Return value:" << resultDataX86.result << ", LastError:" << lastErrorStr
-                     << ", Thread exit code:" << exitCode;
-            success = (exitCode == 0) && (resultDataX86.result != 0);
-            if (!success && resultDataX86.lastError != 0) {
+            qDebug() << "x86 successCount:" << resultDataX86.successCount << "exitCode:" << exitCode;
+            qDebug() << "x86 successCount offset:" << offsetof(InjectionData32, successCount);
+            success = (exitCode == 0) && (resultDataX86.successCount > 0);
+            if (!success) {
                 const_cast<WindowHider*>(this)->setLastErrorMessage(
-                    QString("SetWindowDisplayAffinity failed with error: %1").arg(lastErrorStr)
+                    QString("No windows were successfully hidden (success count: %1)").arg(resultDataX86.successCount)
                 );
             }
         } else {
