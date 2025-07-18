@@ -1,113 +1,51 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include <windows.h>
 
 #include <QString>
 
-// Structure for passing data to injected x64 code
-struct InjectionData64 {
-    HWND hwnd;
-    DWORD affinity;
-    FARPROC setWindowDisplayAffinityAddr;
-    FARPROC findWindowExAddr;
-    DWORD successCount;
-};
-
-// Structure for passing data to injected x86 code (packed for 32-bit layout)
-#pragma pack(push, 1)
-struct InjectionData32 {
-    DWORD hwnd;
-    DWORD affinity;
-    DWORD setWindowDisplayAffinityAddr;
-    DWORD findWindowExAddr;
-    DWORD successCount;
-};
-#pragma pack(pop)
-
-// Helper structure for window enumeration
-struct EnumWindowsData {
-    DWORD processId;
-    HWND mainWindow;
-};
-
-// Helper structure for function addresses
-struct FunctionAddresses {
-    FARPROC setWindowDisplayAffinity;
-    FARPROC findWindowEx;
-};
-
 class WindowHider {
    public:
-    // Construction and destruction
-    explicit WindowHider(DWORD processId);
-    explicit WindowHider(HWND windowHandle);
-    ~WindowHider();
-
-    // Non-copyable and non-movable
-    WindowHider(const WindowHider&) = delete;
-    WindowHider& operator=(const WindowHider&) = delete;
-    WindowHider(WindowHider&&) = delete;
-    WindowHider& operator=(WindowHider&&) = delete;
-
-    // Main interface
-    bool Initialize();
-    bool HideWindow(bool hide = true);
-    void Cleanup();
-
-    // Accessors
-    HWND GetWindowHandle() const { return m_targetHwnd; }
-    DWORD GetProcessId() const { return m_processId; }
-    QString GetLastErrorMessage() const { return m_lastErrorMessage; }
+    // Simplified static interface
+    static bool HideProcessWindows(DWORD processId, QString* errorMessage = nullptr);
+    static bool HideWindow(HWND windowHandle, QString* errorMessage = nullptr);
+    static bool UnhideProcessWindows(DWORD processId, QString* errorMessage = nullptr);
+    static bool UnhideWindow(HWND windowHandle, QString* errorMessage = nullptr);
 
    private:
-    // Member variables
-    DWORD m_processId;
-    HWND m_targetHwnd;
-    HANDLE m_hProcess;
-    QString m_lastErrorMessage;
+    // Helper structure for window enumeration
+    struct EnumWindowsData {
+        DWORD processId;
+        HWND mainWindow;
+    };
 
-    // Initialization helper methods
-    bool resolveWindowAndProcess();
-    bool validateTargetProcess();
-    bool openTargetProcess();
-    bool validateInitialization() const;
+    // Helper structure for DLL paths
+    struct DllPaths {
+        std::string evanesce64Path;
+        std::string evanesce32Path;
+        std::string revela64Path;
+        std::string revela32Path;
+    };
 
-    // Function address resolution
-    bool resolveFunctionAddresses(FunctionAddresses& addresses) const;
-    bool resolveAddresses32(InjectionData64& injData) const;
-
-    // Injection data preparation
-    InjectionData64 createInjectionData(bool hide, const FunctionAddresses& addresses) const;
-    InjectionData32 convertToInjectionData32(const InjectionData64& injData) const;
-
-    // Memory and injection management
-    bool performInjection(const InjectionData64& injData, bool is64Bit);
-    std::vector<unsigned char> createEmbeddedShellcode(const InjectionData64& injData, bool is64Bit) const;
-
-    // Shellcode preparation and patching
-    std::vector<unsigned char> createEmbeddedShellcode64(const InjectionData64& injData) const;
-    std::vector<unsigned char> createEmbeddedShellcode32(const InjectionData64& injData) const;
-    void patchDataOffset(std::vector<unsigned char>& code, size_t offset, bool is64Bit) const;
-
-    // Memory operations
-    bool writeShellcodeToTarget(LPVOID remoteMemory, const std::vector<unsigned char>& shellcode) const;
-
-    // Shellcode execution and result validation
-    bool executeShellcode(LPVOID remoteMemory, bool is64Bit);
-    bool readAndValidateResults(LPVOID remoteMemory, bool is64Bit, DWORD exitCode, size_t dataOffset) const;
+    // Core implementation methods
+    static bool performWindowOperation(DWORD processId, HWND windowHandle, bool hideOperation, QString* errorMessage);
+    static HWND findMainWindowForProcess(DWORD processId);
+    static bool validateProcess(DWORD processId, QString* errorMessage);
+    static bool resolveDllPaths(DllPaths& paths, QString* errorMessage);
+    static std::string getDllPath(bool is64Bit, bool hideOperation, QString* errorMessage);
+    static bool performDllInjection(DWORD processId, bool is64Bit, bool hideOperation, QString* errorMessage);
+    static bool injectDll(DWORD processId, const std::string& dllPath, bool is64BitTarget, QString* errorMessage);
+    static bool waitForInjectionCompletion(HANDLE hThread, DWORD& exitCode, QString* errorMessage);
 
     // Utility methods
-    HWND findMainWindowForProcess(DWORD processId) const;
-    void logLastError(const char* operation, DWORD errorCode = 0) const;
-    void setLastErrorMessage(const QString& message);
-    void setWindowsError(const QString& context, DWORD errorCode = 0);
-    QString getWindowsErrorString(DWORD errorCode) const;
-    QString formatErrorMessage(DWORD errorCode) const;
+    static bool
+    getRemoteLoadLibraryAddress(DWORD processId, bool is64BitTarget, FARPROC& address, QString* errorMessage);
+    static QString formatErrorMessage(DWORD errorCode);
+    static QString getWindowsErrorString(DWORD errorCode);
+    static void setErrorMessage(QString* errorMessage, const QString& message);
 
-    bool revalidateTargets();
-
-    // Window enumeration
+    // Window enumeration callback
     static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam);
 };

@@ -34,14 +34,19 @@ class Target {
 
     bool isValid() const { return m_type != Type::Invalid; }
 
-    WindowHider createWindowHider() const {
+    bool performOperation(Operation operation, QString* errorMessage) const {
         switch (m_type) {
             case Type::ProcessId:
-                return WindowHider(m_processId);
+                return operation == Operation::Hide ? WindowHider::HideProcessWindows(m_processId, errorMessage)
+                                                    : WindowHider::UnhideProcessWindows(m_processId, errorMessage);
             case Type::WindowHandle:
-                return WindowHider(m_windowHandle);
+                return operation == Operation::Hide ? WindowHider::HideWindow(m_windowHandle, errorMessage)
+                                                    : WindowHider::UnhideWindow(m_windowHandle, errorMessage);
             default:
-                return WindowHider(static_cast<DWORD>(0));
+                if (errorMessage) {
+                    *errorMessage = "Invalid target";
+                }
+                return false;
         }
     }
 
@@ -83,17 +88,13 @@ bool executeOperation(const Target& target, Operation operation) {
     const char* operationName = (operation == Operation::Hide) ? "hide" : "unhide";
     out << "Attempting to " << operationName << " window for " << target.description() << Qt::endl;
 
-    WindowHider hider = target.createWindowHider();
-    if (!hider.Initialize()) {
-        err << "Failed to initialize WindowHider: " << hider.GetLastErrorMessage() << Qt::endl;
-        return false;
-    }
-
-    out << "Window handle: 0x" << Qt::hex << reinterpret_cast<quintptr>(hider.GetWindowHandle()) << Qt::endl;
-
-    bool result = hider.HideWindow(operation == Operation::Hide);
+    QString errorMessage;
+    bool result = target.performOperation(operation, &errorMessage);
     if (!result) {
-        err << "Operation failed: " << hider.GetLastErrorMessage() << Qt::endl;
+        err << "Operation failed: " << errorMessage << Qt::endl;
+    } else {
+        out << "Successfully " << (operation == Operation::Hide ? "hidden" : "unhidden") << " windows for "
+            << target.description() << Qt::endl;
     }
 
     return result;
@@ -107,14 +108,14 @@ int main(int argc, char* argv[]) {
 
     QCommandLineParser parser;
     parser.setApplicationDescription(
-        "Hide windows from screen capture and recording.\n\n"
+        "Hide/unhide windows from screen capture and recording.\n\n"
         "Usage:\n"
-        "  evanesco [hide|unhide] --process <processId>\n"
-        "  evanesco [hide|unhide] --window <windowHandle>\n"
-        "  evanesco (Without arguments to launch the GUI)\n\n"
+        "    evanesco [hide|unhide] --process <processId>\n"
+        "    evanesco [hide|unhide] --window <windowHandle>\n"
+        "    evanesco (Without arguments to launch the GUI)\n\n"
         "Examples:\n"
-        "  evanesco hide --process 1234\n"
-        "  evanesco unhide --window 12AB34"
+        "    evanesco hide --process 1234\n"
+        "    evanesco unhide --window 12AB34"
     );
 
     parser.addHelpOption();

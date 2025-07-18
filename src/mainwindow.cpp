@@ -93,8 +93,8 @@ void MainWindow::setupWindowsTable() {
 
     // Set column widths
     ui->windowsTableWidget->setColumnWidth(0, 50);   // Icon column
-    ui->windowsTableWidget->setColumnWidth(1, 300);  // Window Title column
-    ui->windowsTableWidget->setColumnWidth(2, 120);  // Handle column
+    ui->windowsTableWidget->setColumnWidth(1, 320);  // Window Title column
+    ui->windowsTableWidget->setColumnWidth(2, 100);  // Handle column
     ui->windowsTableWidget->setColumnWidth(3, 80);   // PID column
     ui->windowsTableWidget->setColumnWidth(4, 100);  // Architecture column
 
@@ -224,28 +224,25 @@ void MainWindow::performSingleWindowOperation(
         return;
     }
 
-    WindowHider* hider = isWindowsTabActive() ? new WindowHider(info.hwnd) : new WindowHider(info.pid);
+    QString errorMsg;
+    bool success = false;
 
-    if (!hider->Initialize()) {
-        failureCount++;
-        failedProcesses.append(info.processName);
-        QString errorMsg = hider->GetLastErrorMessage();
-        failureReasons.append(errorMsg.isEmpty() ? "Failed to initialize window hider" : errorMsg);
-        delete hider;
-        return;
+    if (isWindowsTabActive()) {
+        success = hideOperation ? WindowHider::HideWindow(info.hwnd, &errorMsg)
+                                : WindowHider::UnhideWindow(info.hwnd, &errorMsg);
+    } else {
+        success = hideOperation ? WindowHider::HideProcessWindows(info.pid, &errorMsg)
+                                : WindowHider::UnhideProcessWindows(info.pid, &errorMsg);
     }
 
-    if (hider->HideWindow(hideOperation)) {
+    if (success) {
         successCount++;
     } else {
         failureCount++;
         failedProcesses.append(info.processName);
-        QString errorMsg = hider->GetLastErrorMessage();
         QString operationName = hideOperation ? "hide" : "unhide";
         failureReasons.append(errorMsg.isEmpty() ? QString("Failed to %1 window").arg(operationName) : errorMsg);
     }
-
-    delete hider;
 }
 
 void MainWindow::showOperationResult(

@@ -1,0 +1,21 @@
+set windows-shell := ['pwsh', '-Command']
+
+default: build64 build32
+
+debug: debug64 debug32
+
+debug64:
+    cmake -B ../../build/Revela/build64 -A x64 -T ClangCL -DCMAKE_BUILD_TYPE=Debug
+    cmake --build ../../build/Revela/build64 --config Debug
+
+debug32:
+    cmake -B ../../build/Revela/build32 -A Win32 -T ClangCL -DCMAKE_BUILD_TYPE=Debug
+    cmake --build ../../build/Revela/build32 --config Debug
+
+build64:
+    cmake -B ../../build/Revela/build64 -A x64 -T ClangCL -DCMAKE_BUILD_TYPE=Release
+    cmake --build ../../build/Revela/build64 --config Release
+
+build32:
+    cmake -B ../../build/Revela/build32 -A Win32 -T ClangCL -DCMAKE_BUILD_TYPE=Release
+    cmake --build ../../build/Revela/build32 --config Release
