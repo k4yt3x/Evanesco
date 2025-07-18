@@ -1,7 +1,9 @@
-#ifndef ABOUTDIALOG_H
-#define ABOUTDIALOG_H
+#pragma once
+
+#include <windows.h>
 
 #include <QDialog>
+#include <QShowEvent>
 
 namespace Ui {
 class AboutDialog;
@@ -14,8 +16,9 @@ class AboutDialog : public QDialog {
     explicit AboutDialog(QWidget* parent, QString version);
     ~AboutDialog();
 
+   protected:
+    void showEvent(QShowEvent* event) override;
+
    private:
     Ui::AboutDialog* ui;
 };
-
-#endif  // ABOUTDIALOG_H

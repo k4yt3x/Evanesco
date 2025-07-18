@@ -1,11 +1,12 @@
 #pragma once
-#include "procutils.h"
 
 #include <optional>
 
+// clang-format off
+#include <windows.h>
 #include <psapi.h>
 #include <tlhelp32.h>
-#include <windows.h>
+// clang-format on
 
 #include <QApplication>
 #include <QCheckBox>
@@ -20,6 +21,7 @@
 #include <QModelIndex>
 #include <QPushButton>
 #include <QSet>
+#include <QShowEvent>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -63,10 +65,14 @@ class MainWindow : public QMainWindow {
     MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
+   protected:
+    void showEvent(QShowEvent* event) override;
+
    private slots:
     void onAutomaticRefreshToggled(bool enabled);
     void onRefreshIntervalChanged(double value);
-    void onTimerTimeout();
+    void onHideFromScreenCaptureChanged(bool enabled);
+    void onRandomizeWindowTitlesChanged(bool enabled);
 
    private:
     Ui::MainWindow* ui;
@@ -136,8 +142,10 @@ class MainWindow : public QMainWindow {
     void applyWindowsFilter();
     void applyProcessesFilter();
     void preserveSelectionDuringRefresh();
-    QList<QPersistentModelIndex> getSelectedIndexes(const QTableWidget* table) const;
-    void restoreSelection(const QTableWidget* table, const QList<QPersistentModelIndex>& selectedIndexes) const;
+    QSet<HWND> getSelectedWindowHandles() const;
+    QSet<DWORD> getSelectedProcessPIDs() const;
+    void restoreWindowSelection(const QSet<HWND>& selectedHandles);
+    void restoreProcessSelection(const QSet<DWORD>& selectedPIDs);
     SortState captureSortState(const QTableWidget* table) const;
     void temporarilyDisableSorting(QTableWidget* table) const;
     void restoreSortState(QTableWidget* table, const SortState& sortState) const;
@@ -163,8 +171,15 @@ class MainWindow : public QMainWindow {
     QTableWidget* getCurrentTable() const;
     bool isWindowsTabActive() const;
 
+    // Window title randomization
+    void applyRandomizedTitles();
+    void restoreOriginalTitles();
+
     // Static callback for EnumWindows
     static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam);
+
+    // Store original title for restoration
+    QString originalMainWindowTitle;
 };
 
-const QString kVersion = "1.0.0";
+const QString kVersion = "1.1.0";

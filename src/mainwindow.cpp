@@ -2,6 +2,10 @@
 #include "ui_mainwindow.h"
 
 #include "aboutdialog.h"
+#include "prefdialog.h"
+#include "procutils.h"
+#include "settings.h"
+#include "titleutils.h"
 #include "windowhider.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -14,29 +18,48 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Initialize refresh timer
     refreshTimer = new QTimer(this);
     refreshTimer->setSingleShot(false);
-    connect(refreshTimer, &QTimer::timeout, this, &MainWindow::onTimerTimeout);
+    connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshCurrentTable);
 
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
+    connect(ui->actionRefreshWindowProcessTable, &QAction::triggered, this, &MainWindow::refreshCurrentTable);
     connect(ui->actionAbout, &QAction::triggered, this, [&]() {
         AboutDialog aboutDialog(this, kVersion);
         aboutDialog.exec();
     });
 
-    connect(ui->automaticRefreshCheckBox, &QCheckBox::toggled, this, &MainWindow::onAutomaticRefreshToggled);
-    connect(
-        ui->refreshIntervalDoubleSpinBox,
-        QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-        this,
-        &MainWindow::onRefreshIntervalChanged
-    );
-    connect(ui->refreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
+    // Connect to Settings signals for refresh functionality
+    Settings* settings = Settings::instance();
+    connect(settings, &Settings::autoRefreshChanged, this, &MainWindow::onAutomaticRefreshToggled);
+    connect(settings, &Settings::refreshIntervalChanged, this, &MainWindow::onRefreshIntervalChanged);
+    connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
+    connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
+
+    // Connect preferences action
+    connect(ui->actionPreferences, &QAction::triggered, this, [this]() {
+        PrefDialog prefDialog(this);
+        prefDialog.exec();
+    });
+    connect(ui->windowsListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
+    connect(ui->processesListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
     connect(ui->hidePushButton, &QPushButton::clicked, this, [&]() { performWindowOperation(true); });
     connect(ui->unhidePushButton, &QPushButton::clicked, this, [&]() { performWindowOperation(false); });
 
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::refreshCurrentTable);
     connect(ui->windowTitleFilterLineEdit, &QLineEdit::textChanged, this, &MainWindow::applyWindowsFilter);
     connect(ui->processNameFilterLineEdit, &QLineEdit::textChanged, this, &MainWindow::applyProcessesFilter);
+
+    // Initialize refresh timer based on settings
+    if (settings->autoRefresh()) {
+        onAutomaticRefreshToggled(true);
+    }
+
+    // Initialize screen capture hiding
+    onHideFromScreenCaptureChanged(settings->hideFromScreenCapture());
+
+    // Store original title and initialize randomization
+    originalMainWindowTitle = this->windowTitle();
+    onRandomizeWindowTitlesChanged(settings->randomizeWindowTitles());
 
     // Initial table population
     refreshCurrentTable();
@@ -48,39 +71,57 @@ MainWindow::~MainWindow() {
 
 void MainWindow::onAutomaticRefreshToggled(bool enabled) {
     if (enabled) {
-        double interval = ui->refreshIntervalDoubleSpinBox->value();
+        double interval = Settings::instance()->refreshInterval();
         refreshTimer->start(static_cast<int>(interval * 1000));
-        ui->refreshIntervalDoubleSpinBox->setEnabled(true);
     } else {
         refreshTimer->stop();
-        ui->refreshIntervalDoubleSpinBox->setEnabled(false);
     }
 }
 
 void MainWindow::onRefreshIntervalChanged(double value) {
-    if (ui->automaticRefreshCheckBox->isChecked()) {
+    if (Settings::instance()->autoRefresh()) {
         refreshTimer->start(static_cast<int>(value * 1000));
     }
 }
 
-void MainWindow::onTimerTimeout() {
-    // Store current selection before refresh
-    QTableWidget* currentTable = getCurrentTable();
-    QList<QPersistentModelIndex> selectedIndexes;
-    QModelIndexList currentSelection = currentTable->selectionModel()->selectedRows();
-    for (const QModelIndex& index : currentSelection) {
-        selectedIndexes.append(QPersistentModelIndex(index));
+void MainWindow::onHideFromScreenCaptureChanged(bool enabled) {
+    HWND hwnd = reinterpret_cast<HWND>(this->winId());
+    if (enabled) {
+        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    } else {
+        SetWindowDisplayAffinity(hwnd, WDA_NONE);
     }
+}
 
-    refreshCurrentTable();
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
 
-    // Restore selection if possible
-    QItemSelectionModel* selectionModel = currentTable->selectionModel();
-    for (const QPersistentModelIndex& persistentIndex : selectedIndexes) {
-        if (persistentIndex.isValid()) {
-            selectionModel->select(persistentIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
-        }
+    // Apply screen capture hiding when window is shown
+    Settings* settings = Settings::instance();
+    HWND hwnd = reinterpret_cast<HWND>(this->winId());
+    if (settings->hideFromScreenCapture()) {
+        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    } else {
+        SetWindowDisplayAffinity(hwnd, WDA_NONE);
     }
+}
+
+void MainWindow::onRandomizeWindowTitlesChanged(bool enabled) {
+    if (enabled) {
+        applyRandomizedTitles();
+    } else {
+        restoreOriginalTitles();
+    }
+}
+
+void MainWindow::applyRandomizedTitles() {
+    // Randomize main window title using TitleUtils
+    this->setWindowTitle(TitleUtils::generateRandomTitle());
+}
+
+void MainWindow::restoreOriginalTitles() {
+    // Restore original main window title
+    this->setWindowTitle(originalMainWindowTitle);
 }
 
 void MainWindow::setupWindowsTable() {
@@ -293,19 +334,151 @@ void MainWindow::refreshCurrentTable() {
 }
 
 void MainWindow::refreshWindowsList() {
+    // Store current selection before refresh
+    QTableWidget* table = ui->windowsTableWidget;
+    QSet<HWND> selectedHandles = getSelectedWindowHandles();
+    SortState sortState = captureSortState(table);
+
     // Get windows list and cache it
     allWindows = getRunningWindows();
 
     // Apply current filter
     applyWindowsFilter();
+
+    // Restore selection and sort state
+    restoreWindowSelection(selectedHandles);
+    restoreSortState(table, sortState);
 }
 
 void MainWindow::refreshProcessList() {
+    // Store current selection before refresh
+    QTableWidget* table = ui->processesTableWidget;
+    QSet<DWORD> selectedPIDs = getSelectedProcessPIDs();
+    SortState sortState = captureSortState(table);
+
     // Get process list and cache it
     allProcesses = getRunningProcesses();
 
     // Apply current filter
     applyProcessesFilter();
+
+    // Restore selection and sort state
+    restoreProcessSelection(selectedPIDs);
+    restoreSortState(table, sortState);
+}
+
+QSet<HWND> MainWindow::getSelectedWindowHandles() const {
+    QSet<HWND> selectedHandles;
+    QTableWidget* table = ui->windowsTableWidget;
+    QModelIndexList selectedRows = table->selectionModel()->selectedRows();
+
+    for (const QModelIndex& index : selectedRows) {
+        int row = index.row();
+        if (row < table->rowCount()) {
+            QTableWidgetItem* handleItem = table->item(row, 2);  // Handle is in column 2
+            if (handleItem) {
+                QString handleText = handleItem->text();
+                bool ok;
+                HWND handle = reinterpret_cast<HWND>(handleText.toULongLong(&ok, 16));
+                if (ok) {
+                    selectedHandles.insert(handle);
+                }
+            }
+        }
+    }
+    return selectedHandles;
+}
+
+QSet<DWORD> MainWindow::getSelectedProcessPIDs() const {
+    QSet<DWORD> selectedPIDs;
+    QTableWidget* table = ui->processesTableWidget;
+    QModelIndexList selectedRows = table->selectionModel()->selectedRows();
+
+    for (const QModelIndex& index : selectedRows) {
+        int row = index.row();
+        if (row < table->rowCount()) {
+            QTableWidgetItem* pidItem = table->item(row, 2);  // PID is in column 2
+            if (pidItem) {
+                QString pidText = pidItem->text();
+                bool ok;
+                DWORD pid = pidText.toULong(&ok);
+                if (ok) {
+                    selectedPIDs.insert(pid);
+                }
+            }
+        }
+    }
+    return selectedPIDs;
+}
+
+void MainWindow::restoreWindowSelection(const QSet<HWND>& selectedHandles) {
+    if (selectedHandles.isEmpty()) {
+        return;
+    }
+
+    QTableWidget* table = ui->windowsTableWidget;
+    QItemSelectionModel* selectionModel = table->selectionModel();
+    selectionModel->clearSelection();
+
+    for (int row = 0; row < table->rowCount(); ++row) {
+        QTableWidgetItem* handleItem = table->item(row, 2);  // Handle is in column 2
+        if (handleItem) {
+            QString handleText = handleItem->text();
+            bool ok;
+            HWND handle = reinterpret_cast<HWND>(handleText.toULongLong(&ok, 16));
+            if (ok && selectedHandles.contains(handle)) {
+                selectionModel->select(
+                    table->model()->index(row, 0), QItemSelectionModel::Select | QItemSelectionModel::Rows
+                );
+            }
+        }
+    }
+}
+
+void MainWindow::restoreProcessSelection(const QSet<DWORD>& selectedPIDs) {
+    if (selectedPIDs.isEmpty()) {
+        return;
+    }
+
+    QTableWidget* table = ui->processesTableWidget;
+    QItemSelectionModel* selectionModel = table->selectionModel();
+    selectionModel->clearSelection();
+
+    for (int row = 0; row < table->rowCount(); ++row) {
+        QTableWidgetItem* pidItem = table->item(row, 2);  // PID is in column 2
+        if (pidItem) {
+            QString pidText = pidItem->text();
+            bool ok;
+            DWORD pid = pidText.toULong(&ok);
+            if (ok && selectedPIDs.contains(pid)) {
+                selectionModel->select(
+                    table->model()->index(row, 0), QItemSelectionModel::Select | QItemSelectionModel::Rows
+                );
+            }
+        }
+    }
+}
+
+MainWindow::SortState MainWindow::captureSortState(const QTableWidget* table) const {
+    SortState sortState;
+    QHeaderView* header = table->horizontalHeader();
+    sortState.wasEnabled = table->isSortingEnabled();
+    sortState.column = header->sortIndicatorSection();
+    sortState.order = header->sortIndicatorOrder();
+    return sortState;
+}
+
+void MainWindow::temporarilyDisableSorting(QTableWidget* table) const {
+    table->setSortingEnabled(false);
+}
+
+void MainWindow::restoreSortState(QTableWidget* table, const SortState& sortState) const {
+    if (sortState.wasEnabled) {
+        table->setSortingEnabled(true);
+        if (sortState.column >= 0) {
+            table->sortItems(sortState.column, sortState.order);
+        }
+    }
 }
 
 QList<ProcessInfo> MainWindow::getRunningProcesses() {

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The preferences system to store/load user preferences.
+- The ability to randomize the window titles.
+- The ability to hide Evanesco's own window from screen capture.
+
 ### Changed
 
 - The code execution method from shellcode injection to DLL injection.

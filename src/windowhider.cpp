@@ -16,7 +16,7 @@
 #pragma comment(lib, "psapi.lib")
 
 namespace {
-constexpr DWORD kThreadTimeoutMs = 5000;
+constexpr DWORD kThreadTimeoutMs = 2000;
 }
 
 bool WindowHider::HideProcessWindows(DWORD processId, QString* errorMessage) {

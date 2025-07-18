@@ -22,8 +22,15 @@ qt_add_executable(Evanesco
     src/mainwindow.cpp
     src/mainwindow.h
     src/mainwindow.ui
+    src/prefdialog.cpp
+    src/prefdialog.h
+    src/prefdialog.ui
     src/procutils.cpp
     src/procutils.h
+    src/settings.cpp
+    src/settings.h
+    src/titleutils.cpp
+    src/titleutils.h
     src/windowhider.cpp
     src/windowhider.h
     "${CMAKE_CURRENT_SOURCE_DIR}/src/resources.rc"

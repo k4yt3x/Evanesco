@@ -102,8 +102,8 @@ bool executeOperation(const Target& target, Operation operation) {
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    app.setApplicationName("Evanesco");
-    app.setApplicationDisplayName("Evanesco");
+    // app.setApplicationName("Evanesco");
+    // app.setApplicationDisplayName("Evanesco");
     app.setApplicationVersion(kVersion);
 
     QCommandLineParser parser;
