@@ -11,6 +11,8 @@
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
+    setWindowTitle("Evanesco " + kVersion);
+
     // Setup the tables
     setupWindowsTable();
     setupProcessesTable();
@@ -22,7 +24,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
-    connect(ui->actionRefreshWindowProcessTable, &QAction::triggered, this, &MainWindow::refreshCurrentTable);
+    connect(ui->actionRefreshCurrentTable, &QAction::triggered, this, &MainWindow::refreshCurrentTable);
     connect(ui->actionAbout, &QAction::triggered, this, [&]() {
         AboutDialog aboutDialog(this, kVersion);
         aboutDialog.exec();
@@ -35,11 +37,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
 
+    // Connect auto refresh changed signal to update menu action
+    connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
+
     // Connect preferences action
     connect(ui->actionPreferences, &QAction::triggered, this, [this]() {
         PrefDialog prefDialog(this);
         prefDialog.exec();
     });
+
+    // Connect auto refresh menu action
+    connect(ui->actionAutoRefreshTables, &QAction::toggled, this, [this](bool checked) {
+        Settings::instance()->setAutoRefresh(checked);
+    });
+
+    // Initialize menu action state
+    ui->actionAutoRefreshTables->setChecked(settings->autoRefresh());
     connect(ui->windowsListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
     connect(ui->processesListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
     connect(ui->hidePushButton, &QPushButton::clicked, this, [&]() { performWindowOperation(true); });
