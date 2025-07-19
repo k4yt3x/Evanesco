@@ -158,10 +158,10 @@ bool WindowHider::validateProcess(DWORD processId, QString* errorMessage) {
 bool WindowHider::resolveDllPaths(DllPaths& paths, QString* errorMessage) {
     QString appDir = QCoreApplication::applicationDirPath();
 
-    paths.evanesce64Path = (appDir + "/lib/Evanesce64.dll").toStdString();
-    paths.evanesce32Path = (appDir + "/lib/Evanesce32.dll").toStdString();
-    paths.revela64Path = (appDir + "/lib/Revela64.dll").toStdString();
-    paths.revela32Path = (appDir + "/lib/Revela32.dll").toStdString();
+    paths.evanesce64Path = (appDir + "/Evanesce64.dll").toStdString();
+    paths.evanesce32Path = (appDir + "/Evanesce32.dll").toStdString();
+    paths.revela64Path = (appDir + "/Revela64.dll").toStdString();
+    paths.revela32Path = (appDir + "/Revela32.dll").toStdString();
 
     if (!QFile::exists(QString::fromStdString(paths.evanesce64Path))) {
         setErrorMessage(errorMessage, "64-bit Evanesce DLL not found: " + QString::fromStdString(paths.evanesce64Path));
