@@ -12,8 +12,9 @@ This lightweight utility allows you to easily hide any window on your system fro
 - OBS Studio
 - Microsoft Teams
 - Discord
+- …
 
-In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate.
+In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate 3. While the third-person, singular, present, imperative form "Evanesce" is technically more grammatically correct, I'm leaving it as "Evanesco" as it will be more interesting to align with the chant of the spell.
 
 ## Roadmap
 
@@ -21,15 +22,19 @@ In case you're wondering, the name "Evanesco" means "disappear" in Latin. I want
 - [ ] Run as a background process to automatically hide certain windows
 - [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
 - [ ] More covert methods to load the shellcode (e.g., `LoadLibraryExW`, `LdrLoadDll`, manual mapping)
+- [x] Hide Evanesco's own window from screen capture
+- [x] Randomize Evanesco's window titles to avoid detection
 
 ## Usage
 
 > [!TIP]
 > You may want to run Evanesco with administrator privileges so you can hide other windows that are running with administrator privileges.
 
-1. [Download](https://github.com/k4yt3x/Evanesco/releases) and extract Evanesco.
-2. Double-click the `Evanesco.exe` file to launch the GUI application.
-3. Click to select windows or processes. You can press and hold `Shift` to select multiple continuous processes or press and hold `Ctrl` to select multiple individual processes.
+1. [Download](https://github.com/k4yt3x/Evanesco/releases/latest) and install Evanesco. You can either:
+    - use the installer (named `EvanescoUserSetup-*-x64.exe`) to install Evanesco onto your system, or
+    - use the portable version (named `Evanesco-*-x64.zip`) to run Evanesco without installation.
+2. Double-click the `Evanesco.exe` file or the desktop icon to launch the GUI application.
+3. Click to select the windows or processes owning the windows you want to hide. You can press and hold `Shift` to select multiple continuous processes or press and hold `Ctrl` to select multiple individual processes.
 4. Press the `Hide` button to hide the windows or the `Unhide` button to unhide the windows.
 
 You can also use Evanesco from the command line:
@@ -38,32 +43,24 @@ You can also use Evanesco from the command line:
 Hide windows from screen capture and recording.
 
 Usage:
-  evanesco [hide|unhide] --process <processId>
-  evanesco [hide|unhide] --window <windowHandle>
-  evanesco (Without arguments to launch the GUI)
+    evanesco [hide|unhide] --process <processId>
+    evanesco [hide|unhide] --window <windowHandle>
+    evanesco (Without arguments to launch the GUI)
 
 Examples:
-  evanesco hide --process 1234
-  evanesco unhide --window 12AB34
+    evanesco hide --process 1234
+    evanesco unhide --window 12AB34
 ```
 
 ## How It Works
 
-TL;DR: Remote thread + `SetWindowDisplayAffinity`.
+TL;DR: DLL injection + `SetWindowDisplayAffinity`.
 
 Windows provides the [`SetWindowDisplayAffinity`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity) function to allow applications to specify where the content of their windows can be displayed. Calling this function with the handle of the window we want to hide from screen captures and the display affinity set to `WDA_EXCLUDEFROMCAPTURE` will cause the window to be transparent and invisible to screen capture software.
 
 However, there is a security restriction where the `SetWindowDisplayAffinity` function can only be called by the process that owns the window, which means we cannot simply write an application that enumerates all windows and calls `SetWindowDisplayAffinity` to hide the windows. The call originate from the process that owns those windows.
 
-Evanesco bypasses this restriction by injecting a piece of shellcode into the process that owns the window we want to hide. This process is very similar to classic DLL injection. Below is an over-simplified overview of this process:
-
-1. Obtain the address of the `SetWindowDisplayAffinity` function in the target process.
-2. Allocate a chunk of memory in the target process with read/write/execute permissions (`PAGE_EXECUTE_READWRITE`).
-3. Craft the shellcode from a template and insert the function addresses and arguments.
-4. Write the shellcode to the target process with `WriteProcessMemory`.
-5. Call `CreateRemoteThread` to execute the shellcode in the target process.
-
-The actual implementation is more complex. You can read the source code to see how it works in detail.
+Evanesco bypasses this restriction by injecting a DLL into the target process that owns the window we want to hide. The injected DLL then calls the `SetWindowDisplayAffinity` function from within that process. While the first version of Evanesco (1.0.0) used shellcode injection, later versions switched to DLL injection to provide additional functionalities.
 
 ## License
 
