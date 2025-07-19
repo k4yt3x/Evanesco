@@ -23,6 +23,9 @@ class Settings : public QObject {
     bool randomizeWindowTitles() const;
     void setRandomizeWindowTitles(bool enabled);
 
+    bool hideTaskbarIcon() const;
+    void setHideTaskbarIcon(bool enabled);
+
     // Force save to disk
     void sync();
 
@@ -34,6 +37,7 @@ class Settings : public QObject {
     void refreshIntervalChanged(double interval);
     void hideFromScreenCaptureChanged(bool enabled);
     void randomizeWindowTitlesChanged(bool enabled);
+    void hideTaskbarIconChanged(bool enabled);
 
    private:
     explicit Settings(QObject* parent = nullptr);
@@ -47,4 +51,5 @@ class Settings : public QObject {
     static constexpr double kDefaultRefreshInterval = 1.0;
     static constexpr bool kDefaultHideFromScreenCapture = false;
     static constexpr bool kDefaultRandomizeWindowTitles = false;
+    static constexpr bool kDefaultHideTaskbarIcon = false;
 };

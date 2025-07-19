@@ -15,6 +15,7 @@ qt_standard_project_setup()
 
 qt_add_executable(Evanesco
     WIN32
+    src/resources.rc
     src/main.cpp
     src/aboutdialog.cpp
     src/aboutdialog.h
@@ -33,7 +34,6 @@ qt_add_executable(Evanesco
     src/titleutils.h
     src/windowhider.cpp
     src/windowhider.h
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/resources.rc"
 )
 
 target_compile_options(Evanesco PRIVATE

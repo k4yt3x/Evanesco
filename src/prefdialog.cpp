@@ -43,6 +43,7 @@ void PrefDialog::loadSettings() {
     ui->autoRefreshIntervalDoubleSpinBox->setEnabled(settings->autoRefresh());
     ui->hideFromScreenCaptureCheckBox->setChecked(settings->hideFromScreenCapture());
     ui->randomizeWindowTitlesCheckBox->setChecked(settings->randomizeWindowTitles());
+    ui->hideTaskbarIconCheckBox->setChecked(settings->hideTaskbarIcon());
 
     // Connect the auto refresh checkbox to enable/disable interval spinbox
     connect(
@@ -56,6 +57,7 @@ void PrefDialog::saveSettings() {
     settings->setRefreshInterval(ui->autoRefreshIntervalDoubleSpinBox->value());
     settings->setHideFromScreenCapture(ui->hideFromScreenCaptureCheckBox->isChecked());
     settings->setRandomizeWindowTitles(ui->randomizeWindowTitlesCheckBox->isChecked());
+    settings->setHideTaskbarIcon(ui->hideTaskbarIconCheckBox->isChecked());
 
     // Force write to disk
     settings->sync();

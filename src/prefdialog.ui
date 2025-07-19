@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>432</width>
     <height>253</height>
    </rect>
   </property>
@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="prefGeneralTab">
       <attribute name="title">
@@ -82,6 +82,13 @@
         <widget class="QCheckBox" name="randomizeWindowTitlesCheckBox">
          <property name="text">
           <string>Randomize Evanesco window titles</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="hideTaskbarIconCheckBox">
+         <property name="text">
+          <string>Hide taskbar icon</string>
          </property>
         </widget>
        </item>

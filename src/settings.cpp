@@ -68,10 +68,22 @@ void Settings::sync() {
     m_settings->sync();
 }
 
+bool Settings::hideTaskbarIcon() const {
+    return m_settings->value("general/hideTaskbarIcon", kDefaultHideTaskbarIcon).toBool();
+}
+
+void Settings::setHideTaskbarIcon(bool enabled) {
+    if (hideTaskbarIcon() != enabled) {
+        m_settings->setValue("general/hideTaskbarIcon", enabled);
+        emit hideTaskbarIconChanged(enabled);
+    }
+}
+
 void Settings::resetToDefaults() {
     setAutoRefresh(kDefaultAutoRefresh);
     setRefreshInterval(kDefaultRefreshInterval);
     setHideFromScreenCapture(kDefaultHideFromScreenCapture);
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
+    setHideTaskbarIcon(kDefaultHideTaskbarIcon);
     sync();
 }

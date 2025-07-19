@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "settings.h"
 #include "windowhider.h"
 
 #include <fcntl.h>
@@ -206,6 +207,13 @@ int main(int argc, char* argv[]) {
     } else {
         // Launch GUI when no operation is specified
         MainWindow window;
+
+        // Apply taskbar icon setting
+        Settings* settings = Settings::instance();
+        if (settings->hideTaskbarIcon()) {
+            window.setWindowFlags(window.windowFlags() | Qt::Tool);
+        }
+
         window.show();
         return app.exec();
     }

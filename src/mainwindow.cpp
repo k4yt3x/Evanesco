@@ -36,6 +36,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(settings, &Settings::refreshIntervalChanged, this, &MainWindow::onRefreshIntervalChanged);
     connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
+    connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
 
     // Connect auto refresh changed signal to update menu action
     connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
@@ -73,6 +74,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Store original title and initialize randomization
     originalMainWindowTitle = this->windowTitle();
     onRandomizeWindowTitlesChanged(settings->randomizeWindowTitles());
+
+    // Initialize taskbar icon hiding
+    onHideTaskbarIconChanged(settings->hideTaskbarIcon());
 
     // Initial table population
     refreshCurrentTable();
@@ -125,6 +129,17 @@ void MainWindow::onRandomizeWindowTitlesChanged(bool enabled) {
     } else {
         restoreOriginalTitles();
     }
+}
+
+void MainWindow::onHideTaskbarIconChanged(bool enabled) {
+    Qt::WindowFlags flags = this->windowFlags();
+    if (enabled) {
+        flags |= Qt::Tool;
+    } else {
+        flags &= ~Qt::Tool;
+    }
+    this->setWindowFlags(flags);
+    this->show();  // Re-show the window to apply flag changes
 }
 
 void MainWindow::applyRandomizedTitles() {
