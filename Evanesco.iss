@@ -19,7 +19,7 @@ Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription
 Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "build\Desktop_Qt_6_9_1_llvm_mingw_64_bit-Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "build\deploy\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{userdesktop}\Evanesco"; Filename: "{app}\Evanesco.exe"; Tasks: desktopicon
