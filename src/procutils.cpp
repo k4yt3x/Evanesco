@@ -242,7 +242,7 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
         return false;
     }
 
-    // RVA + remote base  => absolute 32-bit address
+    // RVA + remote base => absolute 32-bit address
     *pAddr32 = static_cast<DWORD>(moduleRemoteBase + rva);
     CloseHandle(hProc);
     return true;

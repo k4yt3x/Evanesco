@@ -80,12 +80,12 @@ void Settings::setHideTaskbarIcon(bool enabled) {
 }
 
 bool Settings::randomizeDllFileName() const {
-    return m_settings->value("injection/randomizeDllFileName", kDefaultRandomizeDllFileName).toBool();
+    return m_settings->value("payload/randomizeDllFileName", kDefaultRandomizeDllFileName).toBool();
 }
 
 void Settings::setRandomizeDllFileName(bool enabled) {
     if (randomizeDllFileName() != enabled) {
-        m_settings->setValue("injection/randomizeDllFileName", enabled);
+        m_settings->setValue("payload/randomizeDllFileName", enabled);
         emit randomizeDllFileNameChanged(enabled);
     }
 }

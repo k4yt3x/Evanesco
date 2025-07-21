@@ -21,9 +21,10 @@ In case you're wondering, the name "Evanesco" means "disappear" in Latin. I want
 - [ ] Spy++-like drag-and-drop finder tool
 - [ ] Run as a background process to automatically hide certain windows
 - [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
-- [ ] More covert methods to load the shellcode (e.g., `LoadLibraryExW`, `LdrLoadDll`, manual mapping)
+- [ ] More covert methods to load the shellcode (e.g., `LdrLoadDll`, manual mapping)
 - [x] Hide Evanesco's own window from screen capture
 - [x] Randomize Evanesco's window titles to avoid detection
+- [x] Randomize the name of the injected DLL
 
 ## Usage
 

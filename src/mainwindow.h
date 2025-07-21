@@ -1,7 +1,5 @@
 #pragma once
 
-#include <optional>
-
 // clang-format off
 #include <windows.h>
 #include <psapi.h>
@@ -10,6 +8,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QColor>
 #include <QDoubleSpinBox>
 #include <QFileIconProvider>
 #include <QHeaderView>
@@ -171,12 +170,17 @@ class MainWindow : public QMainWindow {
     // Utility methods
     QTableWidget* getCurrentTable() const;
     bool isWindowsTabActive() const;
+    void setRowBackgroundColor(QTableWidget* table, int row, const QColor& color);
+    void updateRowColors();
 
     // Static callback for EnumWindows
     static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam);
 
     // Store original title for restoration
     QString originalMainWindowTitle;
+
+    // Constants
+    static const QColor kHiddenWindowBackgroundColor;
 };
 
 const QString kVersion = "1.2.0";

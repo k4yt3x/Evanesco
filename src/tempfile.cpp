@@ -4,8 +4,6 @@
 
 #include "randutils.h"
 
-// TempFile implementation
-
 TempFile::TempFile(const std::string& sourcePath, const std::string& extension) : isValid_(false), released_(false) {
     tempPath_ = createTempFilePath(extension);
     if (tempPath_.empty()) {

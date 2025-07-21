@@ -8,6 +8,9 @@
 #include "settings.h"
 #include "windowhider.h"
 
+// Define the constant for hidden window background color
+const QColor MainWindow::kHiddenWindowBackgroundColor(128, 0, 128, 100);
+
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
@@ -297,6 +300,15 @@ void MainWindow::performSingleWindowOperation(
 
     if (success) {
         successCount++;
+        // Update row background color based on operation
+        QTableWidget* table = getCurrentTable();
+        if (hideOperation) {
+            // Set purple background for hidden windows
+            setRowBackgroundColor(table, row, kHiddenWindowBackgroundColor);
+        } else {
+            // Clear background for unhidden windows
+            setRowBackgroundColor(table, row, QColor());
+        }
     } else {
         failureCount++;
         failedProcesses.append(info.processName);
@@ -633,6 +645,50 @@ bool MainWindow::isWindowsTabActive() const {
     return ui->tabWidget->currentIndex() == 0;
 }
 
+void MainWindow::setRowBackgroundColor(QTableWidget* table, int row, const QColor& color) {
+    for (int col = 0; col < table->columnCount(); ++col) {
+        QTableWidgetItem* item = table->item(row, col);
+        if (item) {
+            if (color.isValid()) {
+                item->setBackground(color);
+            } else {
+                // Clear the background by using the table's default palette
+                item->setData(Qt::BackgroundRole, QVariant());
+            }
+        }
+    }
+}
+
+void MainWindow::updateRowColors() {
+    if (!isWindowsTabActive()) {
+        // Only applies to windows table
+        return;
+    }
+
+    QTableWidget* table = ui->windowsTableWidget;
+
+    for (int row = 0; row < table->rowCount(); ++row) {
+        // Handle is in column 2
+        QTableWidgetItem* handleItem = table->item(row, 2);
+        if (handleItem) {
+            QString handleText = handleItem->text();
+            bool ok;
+            HWND windowHandle = reinterpret_cast<HWND>(handleText.toULongLong(&ok, 16));
+            if (ok) {
+                DWORD affinity = 0;
+                if (GetWindowDisplayAffinity(windowHandle, &affinity)) {
+                    if (affinity == WDA_EXCLUDEFROMCAPTURE) {
+                        setRowBackgroundColor(table, row, kHiddenWindowBackgroundColor);
+                    } else {
+                        // Clear background
+                        setRowBackgroundColor(table, row, QColor());
+                    }
+                }
+            }
+        }
+    }
+}
+
 void MainWindow::applyWindowsFilter() {
     QString filterText = ui->windowTitleFilterLineEdit->text().trimmed();
     filterWindowsTable(filterText);
@@ -710,6 +766,14 @@ void MainWindow::filterWindowsTable(const QString& filterText) {
         archItem->setFlags(archItem->flags() & ~Qt::ItemIsEditable);
         archItem->setTextAlignment(Qt::AlignCenter);
         table->setItem(i, 4, archItem);
+
+        // Check window display affinity and set purple background if excluded from capture
+        DWORD affinity = 0;
+        if (GetWindowDisplayAffinity(window.windowHandle, &affinity)) {
+            if (affinity == WDA_EXCLUDEFROMCAPTURE) {
+                setRowBackgroundColor(table, i, kHiddenWindowBackgroundColor);
+            }
+        }
     }
 
     // Re-enable sorting and restore previous sort state

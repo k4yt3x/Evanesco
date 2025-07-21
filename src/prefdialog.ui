@@ -87,9 +87,9 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="prefInjectionTab">
+     <widget class="QWidget" name="prefPayloadTab">
       <attribute name="title">
-       <string>Injection</string>
+       <string>Payload</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
