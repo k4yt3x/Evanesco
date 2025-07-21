@@ -40,6 +40,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
     connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
+    connect(settings, &Settings::hideTargetTaskbarIconsChanged, this, &MainWindow::onHideTargetTaskbarIconsChanged);
 
     // Connect auto refresh changed signal to update menu action
     connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
@@ -144,6 +145,11 @@ void MainWindow::onHideTaskbarIconChanged(bool enabled) {
     this->setWindowFlags(flags);
     // Re-show the window to apply flag changes
     this->show();
+}
+
+void MainWindow::onHideTargetTaskbarIconsChanged(bool enabled) {
+    // This setting affects future window operations
+    // No immediate UI changes needed as it's applied during injection
 }
 
 void MainWindow::setupWindowsTable() {
@@ -290,12 +296,15 @@ void MainWindow::performSingleWindowOperation(
     QString errorMsg;
     bool success = false;
 
+    Settings* settings = Settings::instance();
+    bool hideTaskbarIcon = settings->hideTargetTaskbarIcons();
+
     if (isWindowsTabActive()) {
-        success = hideOperation ? WindowHider::HideWindow(info.hwnd, false, &errorMsg)
-                                : WindowHider::UnhideWindow(info.hwnd, false, &errorMsg);
+        success = hideOperation ? WindowHider::HideWindow(info.hwnd, hideTaskbarIcon, &errorMsg)
+                                : WindowHider::UnhideWindow(info.hwnd, hideTaskbarIcon, &errorMsg);
     } else {
-        success = hideOperation ? WindowHider::HideProcessWindows(info.pid, false, &errorMsg)
-                                : WindowHider::UnhideProcessWindows(info.pid, false, &errorMsg);
+        success = hideOperation ? WindowHider::HideProcessWindows(info.pid, hideTaskbarIcon, &errorMsg)
+                                : WindowHider::UnhideProcessWindows(info.pid, hideTaskbarIcon, &errorMsg);
     }
 
     if (success) {

@@ -22,17 +22,17 @@ namespace {
 constexpr DWORD kThreadTimeoutMs = 2000;
 }
 
-bool WindowHider::HideProcessWindows(DWORD processId, bool persistent, QString* errorMessage) {
+bool WindowHider::HideProcessWindows(DWORD processId, bool hideTaskbarIcon, QString* errorMessage) {
     HWND mainWindow = findMainWindowForProcess(processId);
     if (!mainWindow) {
         setErrorMessage(errorMessage, "Could not find main window for process");
         return false;
     }
 
-    return performWindowOperation(processId, mainWindow, true, persistent, errorMessage);
+    return performWindowOperation(processId, mainWindow, true, hideTaskbarIcon, errorMessage);
 }
 
-bool WindowHider::HideWindow(HWND windowHandle, bool persistent, QString* errorMessage) {
+bool WindowHider::HideWindow(HWND windowHandle, bool hideTaskbarIcon, QString* errorMessage) {
     if (!IsWindow(windowHandle)) {
         setErrorMessage(errorMessage, "Window handle is not valid");
         return false;
@@ -44,20 +44,20 @@ bool WindowHider::HideWindow(HWND windowHandle, bool persistent, QString* errorM
         return false;
     }
 
-    return performWindowOperation(processId, windowHandle, true, persistent, errorMessage);
+    return performWindowOperation(processId, windowHandle, true, hideTaskbarIcon, errorMessage);
 }
 
-bool WindowHider::UnhideProcessWindows(DWORD processId, bool persistent, QString* errorMessage) {
+bool WindowHider::UnhideProcessWindows(DWORD processId, bool hideTaskbarIcon, QString* errorMessage) {
     HWND mainWindow = findMainWindowForProcess(processId);
     if (!mainWindow) {
         setErrorMessage(errorMessage, "Could not find main window for process");
         return false;
     }
 
-    return performWindowOperation(processId, mainWindow, false, persistent, errorMessage);
+    return performWindowOperation(processId, mainWindow, false, hideTaskbarIcon, errorMessage);
 }
 
-bool WindowHider::UnhideWindow(HWND windowHandle, bool persistent, QString* errorMessage) {
+bool WindowHider::UnhideWindow(HWND windowHandle, bool hideTaskbarIcon, QString* errorMessage) {
     if (!IsWindow(windowHandle)) {
         setErrorMessage(errorMessage, "Window handle is not valid");
         return false;
@@ -69,14 +69,14 @@ bool WindowHider::UnhideWindow(HWND windowHandle, bool persistent, QString* erro
         return false;
     }
 
-    return performWindowOperation(processId, windowHandle, false, persistent, errorMessage);
+    return performWindowOperation(processId, windowHandle, false, hideTaskbarIcon, errorMessage);
 }
 
 bool WindowHider::performWindowOperation(
     DWORD processId,
     HWND windowHandle,
     bool hideOperation,
-    bool persistent,
+    bool hideTaskbarIcon,
     QString* errorMessage
 ) {
     Q_UNUSED(windowHandle);
@@ -110,7 +110,8 @@ bool WindowHider::performWindowOperation(
     bool is64BitSystem = (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64);
     bool is64BitTarget = is64BitSystem && !isWow64;
 
-    bool result = performInvisibilisDllInjection(processId, is64BitTarget, hideOperation, persistent, errorMessage);
+    bool result =
+        performInvisibilisDllInjection(processId, is64BitTarget, hideOperation, hideTaskbarIcon, errorMessage);
     CloseHandle(hProcess);
 
     return result;
@@ -175,7 +176,7 @@ bool WindowHider::performInvisibilisDllInjection(
     DWORD processId,
     bool is64Bit,
     bool hideOperation,
-    bool persistent,
+    bool hideTaskbarIcon,
     QString* errorMessage
 ) {
     std::string dllPath = getInvisibilisDllPath(is64Bit, errorMessage);
@@ -183,13 +184,13 @@ bool WindowHider::performInvisibilisDllInjection(
         return false;
     }
 
-    return injectInvisibilisDll(processId, hideOperation, persistent, is64Bit, errorMessage);
+    return injectInvisibilisDll(processId, hideOperation, hideTaskbarIcon, is64Bit, errorMessage);
 }
 
 bool WindowHider::injectInvisibilisDll(
     DWORD processId,
     bool hideOperation,
-    bool persistent,
+    bool hideTaskbarIcon,
     bool is64BitTarget,
     QString* errorMessage
 ) {
@@ -220,13 +221,13 @@ bool WindowHider::injectInvisibilisDll(
         return false;
     }
 
-    qDebug() << "Setting operation parameters - Hide:" << hideOperation << "Persistent:" << persistent;
+    qDebug() << "Setting operation parameters - Hide:" << hideOperation << "HideTaskbarIcon:" << hideTaskbarIcon;
 
     // Set operation parameters using bitwise operations
     params->flags = 0;
     // false=hide, true=unhide
     IpcUtils::setOperationFlag(params->flags, !hideOperation);
-    IpcUtils::setPersistentFlag(params->flags, persistent);
+    IpcUtils::setHideTaskbarIconFlag(params->flags, hideTaskbarIcon);
 
     qDebug() << "Final flags value:" << params->flags;
     UnmapViewOfFile(params);

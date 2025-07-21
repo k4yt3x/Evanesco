@@ -20,7 +20,7 @@ struct WindowEnumData {
     std::vector<DWORD> processIds;
     DWORD hiddenCount;
     DWORD operation;
-    bool persistent;
+    bool hideTaskbarIcon;
 };
 
 std::vector<DWORD> GetProcessAndChildren(DWORD parentProcessId) {
@@ -105,11 +105,19 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                           << std::endl;
 #endif
 
-                // Handle persistent flag (placeholder for now)
-                if (data->persistent) {
-                    // TODO: Implement persistent window hiding/unhiding
+                // Handle taskbar icon hiding if flag is set
+                if (data->hideTaskbarIcon) {
+                    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+                    if (data->operation == IpcUtils::kOperationHide) {
+                        // Hide taskbar icon by setting WS_EX_TOOLWINDOW
+                        SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
+                    } else {
+                        // Show taskbar icon by removing WS_EX_TOOLWINDOW
+                        SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle & ~WS_EX_TOOLWINDOW);
+                    }
 #ifdef _DEBUG
-                    std::cout << "  (Persistent mode - not yet implemented)" << std::endl;
+                    std::cout << "  (Taskbar icon "
+                              << (data->operation == IpcUtils::kOperationHide ? "hidden" : "shown") << ")" << std::endl;
 #endif
                 }
             } else {
@@ -125,19 +133,19 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-DWORD PerformWindowOperation(uint32_t operation, bool persistent) {
+DWORD PerformWindowOperation(uint32_t operation, bool hideTaskbarIcon) {
     DWORD currentProcessId = GetCurrentProcessId();
 
 #ifdef _DEBUG
     std::cout << "Operation: " << (operation == IpcUtils::kOperationHide ? "HIDE" : "UNHIDE") << std::endl;
-    std::cout << "Persistent: " << (persistent ? "YES" : "NO") << std::endl;
+    std::cout << "HideTaskbarIcon: " << (hideTaskbarIcon ? "YES" : "NO") << std::endl;
 #endif
 
     WindowEnumData enumData;
     enumData.processIds = GetProcessAndChildren(currentProcessId);
     enumData.hiddenCount = 0;
     enumData.operation = operation;
-    enumData.persistent = persistent;
+    enumData.hideTaskbarIcon = hideTaskbarIcon;
 
     // Enumerate all top-level windows
     EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&enumData));
@@ -183,11 +191,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
             DWORD hiddenCount = 0;
             if (params) {
-                // Extract operation and persistent flag using bitwise operations
+                // Extract operation and hideTaskbarIcon flag using bitwise operations
                 uint32_t operation = IpcUtils::getOperationType(params->flags);
-                bool persistent = IpcUtils::getPersistentFlag(params->flags);
+                bool hideTaskbarIcon = IpcUtils::getHideTaskbarIconFlag(params->flags);
 
-                hiddenCount = PerformWindowOperation(operation, persistent);
+                hiddenCount = PerformWindowOperation(operation, hideTaskbarIcon);
 
                 UnmapViewOfFile(params);
             } else {

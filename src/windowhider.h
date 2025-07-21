@@ -11,10 +11,10 @@
 class WindowHider {
    public:
     // Simplified static interface
-    static bool HideProcessWindows(DWORD processId, bool persistent = false, QString* errorMessage = nullptr);
-    static bool HideWindow(HWND windowHandle, bool persistent = false, QString* errorMessage = nullptr);
-    static bool UnhideProcessWindows(DWORD processId, bool persistent = false, QString* errorMessage = nullptr);
-    static bool UnhideWindow(HWND windowHandle, bool persistent = false, QString* errorMessage = nullptr);
+    static bool HideProcessWindows(DWORD processId, bool hideTaskbarIcon = false, QString* errorMessage = nullptr);
+    static bool HideWindow(HWND windowHandle, bool hideTaskbarIcon = false, QString* errorMessage = nullptr);
+    static bool UnhideProcessWindows(DWORD processId, bool hideTaskbarIcon = false, QString* errorMessage = nullptr);
+    static bool UnhideWindow(HWND windowHandle, bool hideTaskbarIcon = false, QString* errorMessage = nullptr);
 
    private:
     // Helper structure for window enumeration
@@ -31,7 +31,7 @@ class WindowHider {
         DWORD processId,
         HWND windowHandle,
         bool hideOperation,
-        bool persistent,
+        bool hideTaskbarIcon,
         QString* errorMessage
     );
     static HWND findMainWindowForProcess(DWORD processId);
@@ -41,13 +41,13 @@ class WindowHider {
         DWORD processId,
         bool is64Bit,
         bool hideOperation,
-        bool persistent,
+        bool hideTaskbarIcon,
         QString* errorMessage
     );
     static bool injectInvisibilisDll(
         DWORD processId,
         bool hideOperation,
-        bool persistent,
+        bool hideTaskbarIcon,
         bool is64BitTarget,
         QString* errorMessage
     );

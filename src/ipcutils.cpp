@@ -13,13 +13,13 @@ void setOperationFlag(uint32_t& flags, bool isUnhide) {
     }
 }
 
-void setPersistentFlag(uint32_t& flags, bool persistent) {
-    if (persistent) {
+void setHideTaskbarIconFlag(uint32_t& flags, bool hideTaskbarIcon) {
+    if (hideTaskbarIcon) {
         // Set bit
-        flags |= kPersistentMask;
+        flags |= kHideTaskbarIconMask;
     } else {
         // Clear bit
-        flags &= ~kPersistentMask;
+        flags &= ~kHideTaskbarIconMask;
     }
 }
 
@@ -28,8 +28,8 @@ bool getOperationFlag(uint32_t flags) {
     return (flags & kOperationMask) != 0;
 }
 
-bool getPersistentFlag(uint32_t flags) {
-    return (flags & kPersistentMask) != 0;
+bool getHideTaskbarIconFlag(uint32_t flags) {
+    return (flags & kHideTaskbarIconMask) != 0;
 }
 
 uint32_t getOperationType(uint32_t flags) {
@@ -40,15 +40,15 @@ uint32_t getOperationType(uint32_t flags) {
 // Utility function to validate flags
 bool isValidFlags(uint32_t flags) {
     // Check if any unexpected bits are set (only bits 0 and 1 should be used)
-    constexpr uint32_t kValidMask = kOperationMask | kPersistentMask;
+    constexpr uint32_t kValidMask = kOperationMask | kHideTaskbarIconMask;
     return (flags & ~kValidMask) == 0;
 }
 
 // Utility function to create flags from boolean values
-uint32_t createFlags(bool isUnhide, bool persistent) {
+uint32_t createFlags(bool isUnhide, bool hideTaskbarIcon) {
     uint32_t flags = 0;
     setOperationFlag(flags, isUnhide);
-    setPersistentFlag(flags, persistent);
+    setHideTaskbarIconFlag(flags, hideTaskbarIcon);
     return flags;
 }
 
@@ -62,10 +62,10 @@ std::string flagsToString(uint32_t flags) {
         result += "HIDE";
     }
 
-    if (getPersistentFlag(flags)) {
-        result += " | PERSISTENT";
+    if (getHideTaskbarIconFlag(flags)) {
+        result += " | HIDE_TASKBAR_ICON";
     } else {
-        result += " | TEMPORARY";
+        result += " | SHOW_TASKBAR_ICON";
     }
 
     return result;

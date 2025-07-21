@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A named shared memory mechanism for IPC to allow the GUI to communicate with the DLL.
 - Purple row background for windows that have display affinity set to `WDA_EXCLUDEFROMCAPTURE`.
-- The option to hide the taskbar icon.
+- The option to hide Evanesco's taskbar icon.
+- The option to hide the target window's taskbar icon.
 - The option to randomize the injected DLL file's name.
 
 ### Changed

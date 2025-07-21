@@ -90,6 +90,17 @@ void Settings::setRandomizeDllFileName(bool enabled) {
     }
 }
 
+bool Settings::hideTargetTaskbarIcons() const {
+    return m_settings->value("payload/hideTargetTaskbarIcons", kDefaultHideTargetTaskbarIcons).toBool();
+}
+
+void Settings::setHideTargetTaskbarIcons(bool enabled) {
+    if (hideTargetTaskbarIcons() != enabled) {
+        m_settings->setValue("payload/hideTargetTaskbarIcons", enabled);
+        emit hideTargetTaskbarIconsChanged(enabled);
+    }
+}
+
 void Settings::resetToDefaults() {
     setAutoRefresh(kDefaultAutoRefresh);
     setRefreshInterval(kDefaultRefreshInterval);
@@ -97,5 +108,6 @@ void Settings::resetToDefaults() {
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
     setHideTaskbarIcon(kDefaultHideTaskbarIcon);
     setRandomizeDllFileName(kDefaultRandomizeDllFileName);
+    setHideTargetTaskbarIcons(kDefaultHideTargetTaskbarIcons);
     sync();
 }

@@ -73,6 +73,7 @@ class MainWindow : public QMainWindow {
     void onHideFromScreenCaptureChanged(bool enabled);
     void onRandomizeWindowTitlesChanged(bool enabled);
     void onHideTaskbarIconChanged(bool enabled);
+    void onHideTargetTaskbarIconsChanged(bool enabled);
 
    private:
     Ui::MainWindow* ui;

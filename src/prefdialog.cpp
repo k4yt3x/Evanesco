@@ -45,6 +45,7 @@ void PrefDialog::loadSettings() {
     ui->randomizeWindowTitlesCheckBox->setChecked(settings->randomizeWindowTitles());
     ui->hideTaskbarIconCheckBox->setChecked(settings->hideTaskbarIcon());
     ui->randomizeDllFileNameCheckBox->setChecked(settings->randomizeDllFileName());
+    ui->hideTargetTaskbarIconsCheckBox->setChecked(settings->hideTargetTaskbarIcons());
 
     // Connect the auto refresh checkbox to enable/disable interval spinbox
     connect(
@@ -60,6 +61,7 @@ void PrefDialog::saveSettings() {
     settings->setRandomizeWindowTitles(ui->randomizeWindowTitlesCheckBox->isChecked());
     settings->setHideTaskbarIcon(ui->hideTaskbarIconCheckBox->isChecked());
     settings->setRandomizeDllFileName(ui->randomizeDllFileNameCheckBox->isChecked());
+    settings->setHideTargetTaskbarIcons(ui->hideTargetTaskbarIconsCheckBox->isChecked());
 
     // Force write to disk
     settings->sync();

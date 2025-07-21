@@ -30,6 +30,9 @@ class Settings : public QObject {
     bool randomizeDllFileName() const;
     void setRandomizeDllFileName(bool enabled);
 
+    bool hideTargetTaskbarIcons() const;
+    void setHideTargetTaskbarIcons(bool enabled);
+
     // Force save to disk
     void sync();
 
@@ -43,6 +46,7 @@ class Settings : public QObject {
     void randomizeWindowTitlesChanged(bool enabled);
     void hideTaskbarIconChanged(bool enabled);
     void randomizeDllFileNameChanged(bool enabled);
+    void hideTargetTaskbarIconsChanged(bool enabled);
 
    private:
     explicit Settings(QObject* parent = nullptr);
@@ -52,10 +56,11 @@ class Settings : public QObject {
     QSettings* m_settings;
 
     // Default values
-    static constexpr bool kDefaultAutoRefresh = false;
+    static constexpr bool kDefaultAutoRefresh = true;
     static constexpr double kDefaultRefreshInterval = 1.0;
     static constexpr bool kDefaultHideFromScreenCapture = false;
     static constexpr bool kDefaultRandomizeWindowTitles = false;
     static constexpr bool kDefaultHideTaskbarIcon = false;
     static constexpr bool kDefaultRandomizeDllFileName = false;
+    static constexpr bool kDefaultHideTargetTaskbarIcons = false;
 };

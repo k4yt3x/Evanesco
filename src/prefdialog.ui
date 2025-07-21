@@ -100,6 +100,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="hideTargetTaskbarIconsCheckBox">
+         <property name="text">
+          <string>Hide target window taskbar icons</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Orientation::Vertical</enum>

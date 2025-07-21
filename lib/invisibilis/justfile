@@ -1,6 +1,6 @@
 set windows-shell := ['pwsh', '-Command']
 
-default: build64 build32
+default: build64 build32 copy
 
 debug: debug64 debug32
 
@@ -19,3 +19,6 @@ build64:
 build32:
     cmake -B ../../build/Invisibilis/build32 -A Win32 -T ClangCL -DCMAKE_BUILD_TYPE=Release
     cmake --build ../../build/Invisibilis/build32 --config Release
+
+copy:
+    cp ../../build/Invisibilis/Release/*.dll ../../build/Desktop_Qt_6_9_1_llvm_mingw_64_bit-Release
