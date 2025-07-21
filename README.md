@@ -14,22 +14,15 @@ This lightweight utility allows you to easily hide any window on your system fro
 - Discord
 - …
 
-In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate 3. While the third-person, singular, present, imperative form "Evanesce" is technically more grammatically correct, I'm leaving it as "Evanesco" as it will be more interesting to align with the chant of the spell.
-
-## Roadmap
-
-- [ ] Spy++-like drag-and-drop finder tool
-- [ ] Run as a background process to automatically hide certain windows
-- [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
-- [ ] More covert methods to load the shellcode (e.g., `LdrLoadDll`, manual mapping)
-- [x] Hide Evanesco's own window from screen capture
-- [x] Randomize Evanesco's window titles to avoid detection
-- [x] Randomize the name of the injected DLL
+In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate 3. While the third-person, singular, present, imperative form "Evanesce" is technically more grammatically correct, I'm leaving it as "Evanesco" as it is more interesting to align with the chant of the spell.
 
 ## Usage
 
 > [!TIP]
-> You may want to run Evanesco with administrator privileges so you can hide other windows that are running with administrator privileges.
+> - You may want to run Evanesco with administrator privileges so you can hide other windows that are running with administrator privileges.
+> - You can easily test if a target window has been hidden by previewing a screenshot with Windows' built-in Snipping Tool (`Ctrl+Shift+S`).
+> - You can hide `explorer.exe` to hide the taskbar and the desktop.
+> - You can use `Ctrl+A` to select all windows or processes in the tables.
 
 1. [Download](https://github.com/k4yt3x/Evanesco/releases/latest) and install Evanesco. You can either:
     - use the installer (named `EvanescoUserSetup-*-x64.exe`) to install Evanesco onto your system, or
@@ -62,6 +55,18 @@ Windows provides the [`SetWindowDisplayAffinity`](https://learn.microsoft.com/en
 However, there is a security restriction where the `SetWindowDisplayAffinity` function can only be called by the process that owns the window, which means we cannot simply write an application that enumerates all windows and calls `SetWindowDisplayAffinity` to hide the windows. The call originate from the process that owns those windows.
 
 Evanesco bypasses this restriction by injecting a DLL into the target process that owns the window we want to hide. The injected DLL then calls the `SetWindowDisplayAffinity` function from within that process. While the first version of Evanesco (1.0.0) used shellcode injection, later versions switched to DLL injection to provide additional functionalities.
+
+## Roadmap
+
+- [ ] Spy++-like drag-and-drop finder tool
+- [ ] Run as a background process to automatically hide certain windows
+- [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
+- [ ] More covert methods to load the shellcode (e.g., `LdrLoadDll`, manual mapping)
+- [x] Hide Evanesco's own window from screen capture
+- [x] Randomize Evanesco's window titles to avoid detection
+- [x] Randomize the name of the injected DLL
+- [x] Visual indicator for hidden windows in the table
+- [x] Hide the taskbar icon of the target window
 
 ## License
 
