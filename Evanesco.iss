@@ -18,6 +18,9 @@ PrivilegesRequired=lowest
 Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional icons:"
 Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescription: "Additional icons:"
 
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\*"; Check: IsUpgrade
+
 [Files]
 Source: "build\deploy\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
@@ -30,3 +33,9 @@ Filename: "{app}\Evanesco.exe"; Description: "Launch Evanesco"; Flags: nowait po
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\Programs\Evanesco"
+
+[Code]
+function IsUpgrade: Boolean;
+begin
+  Result := RegKeyExists(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{564d966a-2bd9-4a33-b7f9-1c48510b925e}_is1');
+end;
