@@ -1,4 +1,4 @@
-#define ApplicationVersion "1.1.0"
+#define ApplicationVersion "1.2.0"
 
 [Setup]
 AppName=Evanesco

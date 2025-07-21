@@ -79,11 +79,23 @@ void Settings::setHideTaskbarIcon(bool enabled) {
     }
 }
 
+bool Settings::randomizeDllFileName() const {
+    return m_settings->value("injection/randomizeDllFileName", kDefaultRandomizeDllFileName).toBool();
+}
+
+void Settings::setRandomizeDllFileName(bool enabled) {
+    if (randomizeDllFileName() != enabled) {
+        m_settings->setValue("injection/randomizeDllFileName", enabled);
+        emit randomizeDllFileNameChanged(enabled);
+    }
+}
+
 void Settings::resetToDefaults() {
     setAutoRefresh(kDefaultAutoRefresh);
     setRefreshInterval(kDefaultRefreshInterval);
     setHideFromScreenCapture(kDefaultHideFromScreenCapture);
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
     setHideTaskbarIcon(kDefaultHideTaskbarIcon);
+    setRandomizeDllFileName(kDefaultRandomizeDllFileName);
     sync();
 }

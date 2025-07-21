@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A named shared memory mechanism for IPC to allow the GUI to communicate with the DLL.
 - The option to hide the taskbar icon.
+- The option to randomize the injected DLL file's name.
+
+### Changed
+
+- Do not show a popup message if the hiding/unhiding operation is successful.
+- Merge two DLL files into one to reduce the number of files.
 
 ## [1.1.0] - 2025-07-18
 

@@ -5,8 +5,8 @@
 #include <QMessageBox>
 #include <QPushButton>
 
+#include "randutils.h"
 #include "settings.h"
-#include "titleutils.h"
 
 PrefDialog::PrefDialog(QWidget* parent) : QDialog(parent), ui(new Ui::PrefDialog) {
     ui->setupUi(this);
@@ -44,6 +44,7 @@ void PrefDialog::loadSettings() {
     ui->hideFromScreenCaptureCheckBox->setChecked(settings->hideFromScreenCapture());
     ui->randomizeWindowTitlesCheckBox->setChecked(settings->randomizeWindowTitles());
     ui->hideTaskbarIconCheckBox->setChecked(settings->hideTaskbarIcon());
+    ui->randomizeDllFileNameCheckBox->setChecked(settings->randomizeDllFileName());
 
     // Connect the auto refresh checkbox to enable/disable interval spinbox
     connect(
@@ -58,6 +59,7 @@ void PrefDialog::saveSettings() {
     settings->setHideFromScreenCapture(ui->hideFromScreenCaptureCheckBox->isChecked());
     settings->setRandomizeWindowTitles(ui->randomizeWindowTitlesCheckBox->isChecked());
     settings->setHideTaskbarIcon(ui->hideTaskbarIconCheckBox->isChecked());
+    settings->setRandomizeDllFileName(ui->randomizeDllFileNameCheckBox->isChecked());
 
     // Force write to disk
     settings->sync();
@@ -100,6 +102,6 @@ void PrefDialog::showEvent(QShowEvent* event) {
 
     // Apply randomized title when dialog is shown
     if (settings->randomizeWindowTitles()) {
-        this->setWindowTitle(TitleUtils::generateRandomTitle());
+        this->setWindowTitle(RandUtils::generateRandomTitle());
     }
 }

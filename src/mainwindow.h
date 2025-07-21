@@ -172,10 +172,6 @@ class MainWindow : public QMainWindow {
     QTableWidget* getCurrentTable() const;
     bool isWindowsTabActive() const;
 
-    // Window title randomization
-    void applyRandomizedTitles();
-    void restoreOriginalTitles();
-
     // Static callback for EnumWindows
     static BOOL CALLBACK EnumWindowsCallback(HWND hwnd, LPARAM lParam);
 
@@ -183,4 +179,4 @@ class MainWindow : public QMainWindow {
     QString originalMainWindowTitle;
 };
 
-const QString kVersion = "1.1.0";
+const QString kVersion = "1.2.0";

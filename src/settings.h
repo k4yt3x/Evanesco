@@ -26,6 +26,10 @@ class Settings : public QObject {
     bool hideTaskbarIcon() const;
     void setHideTaskbarIcon(bool enabled);
 
+    // Injection settings
+    bool randomizeDllFileName() const;
+    void setRandomizeDllFileName(bool enabled);
+
     // Force save to disk
     void sync();
 
@@ -38,6 +42,7 @@ class Settings : public QObject {
     void hideFromScreenCaptureChanged(bool enabled);
     void randomizeWindowTitlesChanged(bool enabled);
     void hideTaskbarIconChanged(bool enabled);
+    void randomizeDllFileNameChanged(bool enabled);
 
    private:
     explicit Settings(QObject* parent = nullptr);
@@ -52,4 +57,5 @@ class Settings : public QObject {
     static constexpr bool kDefaultHideFromScreenCapture = false;
     static constexpr bool kDefaultRandomizeWindowTitles = false;
     static constexpr bool kDefaultHideTaskbarIcon = false;
+    static constexpr bool kDefaultRandomizeDllFileName = false;
 };

@@ -1,8 +1,8 @@
 #include "aboutdialog.h"
 #include "ui_aboutdialog.h"
 
+#include "randutils.h"
 #include "settings.h"
-#include "titleutils.h"
 
 AboutDialog::AboutDialog(QWidget* parent, QString version) : QDialog(parent), ui(new Ui::AboutDialog) {
     ui->setupUi(this);
@@ -26,6 +26,6 @@ void AboutDialog::showEvent(QShowEvent* event) {
 
     // Apply randomized title when dialog is shown
     if (settings->randomizeWindowTitles()) {
-        this->setWindowTitle(TitleUtils::generateRandomTitle());
+        this->setWindowTitle(RandUtils::generateRandomTitle());
     }
 }

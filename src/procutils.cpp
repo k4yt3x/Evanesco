@@ -9,7 +9,7 @@ namespace ProcUtils {
 
 QString getProcessArchitecture(DWORD pid) {
     HANDLE hProcess = openProcess(pid);
-    if (hProcess == NULL) {
+    if (hProcess == nullptr) {
         return "Unknown";
     }
 
@@ -21,7 +21,7 @@ QString getProcessArchitecture(DWORD pid) {
 
 QString getProcessExecutablePath(DWORD pid) {
     HANDLE hProcess = openProcess(pid);
-    if (hProcess == NULL) {
+    if (hProcess == nullptr) {
         return QString();
     }
 
@@ -43,7 +43,7 @@ HWND getMainWindowHandle(DWORD pid) {
         HWND mainWindow;
     };
 
-    EnumData data = {pid, NULL};
+    EnumData data = {pid, nullptr};
 
     EnumWindows(
         [](HWND hwnd, LPARAM lParam) -> BOOL {
@@ -62,15 +62,17 @@ HWND getMainWindowHandle(DWORD pid) {
                         LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
 
                         if ((style & WS_VISIBLE) && !(exStyle & WS_EX_TOOLWINDOW) &&
-                            GetWindow(hwnd, GW_OWNER) == NULL && !(style & WS_CHILD)) {
+                            GetWindow(hwnd, GW_OWNER) == nullptr && !(style & WS_CHILD)) {
                             pData->mainWindow = hwnd;
-                            return FALSE;  // Stop enumeration
+                            // Stop enumeration
+                            return FALSE;
                         }
                     }
                 }
             }
 
-            return TRUE;  // Continue enumeration
+            // Continue enumeration
+            return TRUE;
         },
         reinterpret_cast<LPARAM>(&data)
     );
@@ -79,13 +81,14 @@ HWND getMainWindowHandle(DWORD pid) {
 }
 
 bool isProcessVisible(DWORD pid) {
-    return getMainWindowHandle(pid) != NULL;
+    return getMainWindowHandle(pid) != nullptr;
 }
 
 bool is64BitProcess(DWORD pid) {
     HANDLE hProcess = openProcess(pid);
-    if (hProcess == NULL) {
-        return true;  // Assume 64-bit if we can't determine
+    if (hProcess == nullptr) {
+        // Assume 64-bit if we can't determine
+        return true;
     }
 
     bool result = is64BitProcess(hProcess);
@@ -98,7 +101,8 @@ bool is64BitProcess(HANDLE hProcess) {
     BOOL isWow64 = FALSE;
 
     if (!IsWow64Process(hProcess, &isWow64)) {
-        return true;  // Assume 64-bit if we can't determine
+        // Assume 64-bit if we can't determine
+        return true;
     }
 
     return !isWow64;
@@ -106,7 +110,7 @@ bool is64BitProcess(HANDLE hProcess) {
 
 HANDLE openProcess(DWORD pid, DWORD desiredAccess) {
     HANDLE hProcess = OpenProcess(desiredAccess, FALSE, pid);
-    if (hProcess == NULL) {
+    if (hProcess == nullptr) {
         // Try with reduced permissions
         hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
     }
@@ -127,7 +131,7 @@ bool getExportRva32(LPCWSTR path32, LPCSTR functionName, DWORD* pRva) {
         return false;
     }
 
-    BYTE* base = (BYTE*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+    BYTE* base = static_cast<BYTE*>(MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0));
     if (!base) {
         CloseHandle(hMap);
         CloseHandle(hFile);
@@ -135,8 +139,8 @@ bool getExportRva32(LPCWSTR path32, LPCSTR functionName, DWORD* pRva) {
     }
 
     // Locate PE headers
-    auto dos = (IMAGE_DOS_HEADER*)base;
-    auto nt = (IMAGE_NT_HEADERS32*)(base + dos->e_lfanew);
+    auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
+    auto nt = reinterpret_cast<IMAGE_NT_HEADERS32*>(base + dos->e_lfanew);
     if (nt->Signature != IMAGE_NT_SIGNATURE || nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
         UnmapViewOfFile(base);
         CloseHandle(hMap);
@@ -153,13 +157,13 @@ bool getExportRva32(LPCWSTR path32, LPCSTR functionName, DWORD* pRva) {
         return false;
     }
 
-    auto expDir = (IMAGE_EXPORT_DIRECTORY*)(base + dirRva);
-    auto names = (DWORD*)(base + expDir->AddressOfNames);
-    auto ordinals = (WORD*)(base + expDir->AddressOfNameOrdinals);
-    auto funcs = (DWORD*)(base + expDir->AddressOfFunctions);
+    auto expDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(base + dirRva);
+    auto names = reinterpret_cast<DWORD*>(base + expDir->AddressOfNames);
+    auto ordinals = reinterpret_cast<WORD*>(base + expDir->AddressOfNameOrdinals);
+    auto funcs = reinterpret_cast<DWORD*>(base + expDir->AddressOfFunctions);
 
     for (DWORD i = 0; i < expDir->NumberOfNames; ++i) {
-        LPCSTR name = (LPCSTR)(base + names[i]);
+        LPCSTR name = reinterpret_cast<LPCSTR>(base + names[i]);
         if (lstrcmpiA(name, functionName) == 0) {
             DWORD rva = funcs[ordinals[i]];
             *pRva = rva;
@@ -168,15 +172,16 @@ bool getExportRva32(LPCWSTR path32, LPCSTR functionName, DWORD* pRva) {
             if (rva >= dirRva && rva < dirRva + nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size) {
                 // Forwarder string, e.g. "KERNELBASE.GetLastError"
                 // Parse dll+func, recurse:
-                LPCSTR fwd = (LPCSTR)(base + rva);
+                LPCSTR fwd = reinterpret_cast<LPCSTR>(base + rva);
                 char dll[64], sym[64];
                 if (sscanf_s(fwd, "%63[^.].%63s", dll, (unsigned)_countof(dll), sym, (unsigned)_countof(sym)) == 2) {
                     strcat_s(dll, ".dll");
                     wchar_t path[MAX_PATH];
                     GetSystemWow64DirectoryW(path, MAX_PATH);
                     wcscat_s(path, L"\\");
-                    size_t pos = lstrlenA(dll);
-                    MultiByteToWideChar(CP_ACP, 0, dll, -1, path + lstrlenW(path), (int)(MAX_PATH - lstrlenW(path)));
+                    MultiByteToWideChar(
+                        CP_ACP, 0, dll, -1, path + lstrlenW(path), static_cast<int>(MAX_PATH - lstrlenW(path))
+                    );
 
                     // Recursively get the RVA of the forwarded function
                     getExportRva32(path, sym, &rva);
@@ -215,7 +220,7 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
     for (DWORD i = 0; i < cb / sizeof(HMODULE); ++i) {
         char name[MAX_PATH];
         if (GetModuleBaseNameA(hProc, mods[i], name, MAX_PATH) && !_stricmp(name, moduleName)) {
-            moduleRemoteBase = (DWORD_PTR)mods[i];
+            moduleRemoteBase = reinterpret_cast<DWORD_PTR>(mods[i]);
             break;
         }
     }
@@ -229,7 +234,7 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
     GetSystemWow64DirectoryW(path, MAX_PATH);
     wcscat_s(path, L"\\");
     size_t pathLen = lstrlenW(path);
-    MultiByteToWideChar(CP_ACP, 0, moduleName, -1, path + pathLen, (int)(MAX_PATH - pathLen));
+    MultiByteToWideChar(CP_ACP, 0, moduleName, -1, path + pathLen, static_cast<int>(MAX_PATH - pathLen));
 
     DWORD rva;
     if (!getExportRva32(path, functionName, &rva)) {
@@ -238,7 +243,7 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
     }
 
     // RVA + remote base  => absolute 32-bit address
-    *pAddr32 = (DWORD)(moduleRemoteBase + rva);
+    *pAddr32 = static_cast<DWORD>(moduleRemoteBase + rva);
     CloseHandle(hProc);
     return true;
 }

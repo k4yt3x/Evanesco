@@ -1,9 +1,6 @@
+#include <cstdint>
+#include <string>
 #include <vector>
-
-// clang-format off
-#include <windows.h>
-#include <tlhelp32.h>
-// clang-format on
 
 #ifdef _DEBUG
 #include <fcntl.h>
@@ -11,9 +8,19 @@
 #include <iostream>
 #endif
 
+// clang-format off
+#include <windows.h>
+#include <tlhelp32.h>
+// clang-format on
+
+#include "hashutils.h"
+#include "ipcutils.h"
+
 struct WindowEnumData {
     std::vector<DWORD> processIds;
     DWORD hiddenCount;
+    DWORD operation;
+    bool persistent;
 };
 
 std::vector<DWORD> GetProcessAndChildren(DWORD parentProcessId) {
@@ -51,7 +58,7 @@ std::vector<DWORD> GetProcessAndChildren(DWORD parentProcessId) {
     CloseHandle(hSnapshot);
 
 #ifdef _DEBUG
-    std::cout << "Total processes to hide windows for: " << processIds.size() << std::endl;
+    std::cout << "Total processes to process windows for: " << processIds.size() << std::endl;
     for (DWORD pid : processIds) {
         std::cout << "  Process ID: " << pid << std::endl;
     }
@@ -88,14 +95,26 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                       << ")";
 #endif
 
-            if (SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)) {
+            // Determine operation based on flags
+            DWORD affinity = (data->operation == IpcUtils::kOperationHide) ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+
+            if (SetWindowDisplayAffinity(hwnd, affinity)) {
                 data->hiddenCount++;
 #ifdef _DEBUG
-                std::cout << " - HIDDEN" << std::endl;
+                std::cout << " - " << (data->operation == IpcUtils::kOperationHide ? "HIDDEN" : "UNHIDDEN")
+                          << std::endl;
 #endif
+
+                // Handle persistent flag (placeholder for now)
+                if (data->persistent) {
+                    // TODO: Implement persistent window hiding/unhiding
+#ifdef _DEBUG
+                    std::cout << "  (Persistent mode - not yet implemented)" << std::endl;
+#endif
+                }
             } else {
 #ifdef _DEBUG
-                std::cout << " - FAILED TO HIDE (Error: " << GetLastError() << ")" << std::endl;
+                std::cout << " - FAILED (Error: " << GetLastError() << ")" << std::endl;
 #endif
             }
             break;
@@ -106,22 +125,25 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-DWORD HideAllWindows() {
+DWORD PerformWindowOperation(uint32_t operation, bool persistent) {
     DWORD currentProcessId = GetCurrentProcessId();
 
 #ifdef _DEBUG
-    std::cout << "Current process ID: " << currentProcessId << std::endl;
+    std::cout << "Operation: " << (operation == IpcUtils::kOperationHide ? "HIDE" : "UNHIDE") << std::endl;
+    std::cout << "Persistent: " << (persistent ? "YES" : "NO") << std::endl;
 #endif
 
     WindowEnumData enumData;
     enumData.processIds = GetProcessAndChildren(currentProcessId);
     enumData.hiddenCount = 0;
+    enumData.operation = operation;
+    enumData.persistent = persistent;
 
     // Enumerate all top-level windows
     EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&enumData));
 
 #ifdef _DEBUG
-    std::cout << "Total windows hidden: " << enumData.hiddenCount << std::endl;
+    std::cout << "Total windows processed: " << enumData.hiddenCount << std::endl;
 #endif
 
     return enumData.hiddenCount;
@@ -132,45 +154,73 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         case DLL_PROCESS_ATTACH: {
 #ifdef _DEBUG
             if (AllocConsole()) {
-                freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-                freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
+                freopen_s(reinterpret_cast<FILE**>(stdout), "CONOUT$", "w", stdout);
+                freopen_s(reinterpret_cast<FILE**>(stderr), "CONOUT$", "w", stderr);
             }
-            std::cout << "Evanesce DLL loaded" << std::endl;
+            std::cout << "Invisibilis DLL loaded" << std::endl;
 #endif
 
             DisableThreadLibraryCalls(hModule);
 
-            // Hide all windows of the current process and its children
-            // If no windows were hidden, return FALSE to indicate failure
-            DWORD hiddenCount = HideAllWindows();
-            if (hiddenCount == 0) {
+            DWORD currentPid = GetCurrentProcessId();
+            std::string mappingName = HashUtils::generateMappingName(currentPid);
+
 #ifdef _DEBUG
-                std::cout << "No windows were hidden" << std::endl;
+            std::cout << "Looking for shared memory: " << mappingName << std::endl;
+#endif
+
+            HANDLE hMapFile = OpenFileMappingA(FILE_MAP_READ, FALSE, mappingName.c_str());
+            if (!hMapFile) {
+#ifdef _DEBUG
+                std::cout << "Failed to open shared memory mapping (Error: " << GetLastError() << ")" << std::endl;
 #endif
                 return FALSE;
             }
 
+            IpcUtils::OperationParams* params = static_cast<IpcUtils::OperationParams*>(
+                MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, sizeof(IpcUtils::OperationParams))
+            );
+
+            DWORD hiddenCount = 0;
+            if (params) {
+                // Extract operation and persistent flag using bitwise operations
+                uint32_t operation = IpcUtils::getOperationType(params->flags);
+                bool persistent = IpcUtils::getPersistentFlag(params->flags);
+
+                hiddenCount = PerformWindowOperation(operation, persistent);
+
+                UnmapViewOfFile(params);
+            } else {
 #ifdef _DEBUG
-            std::cout << "Successfully hidden " << hiddenCount << " windows" << std::endl;
+                std::cout << "Failed to map view of file (Error: " << GetLastError() << ")" << std::endl;
+#endif
+            }
+
+            CloseHandle(hMapFile);
+
+#ifdef _DEBUG
+            std::cout << "Successfully processed " << hiddenCount << " windows" << std::endl;
             std::cout << "Creating detached thread to unload DLL" << std::endl;
 #endif
 
-            // Unload the DLL in a detached thread
+            // Self-unload the DLL in a detached thread
             HANDLE hThread = CreateThread(
-                NULL,
+                nullptr,
                 0,
                 [](LPVOID lpParam) -> DWORD {
-                    HMODULE hModule = (HMODULE)lpParam;
+                    HMODULE hModule = static_cast<HMODULE>(lpParam);
                     FreeLibraryAndExitThread(hModule, 0);
                 },
                 hModule,
                 0,
-                NULL
+                nullptr
             );
 
             if (hThread) {
                 CloseHandle(hThread);
             }
+
+            return hiddenCount > 0;
         }
 
         case DLL_THREAD_ATTACH:
@@ -179,7 +229,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
         case DLL_PROCESS_DETACH:
 #ifdef _DEBUG
-            std::cout << "Evanesce DLL unloading" << std::endl;
+            std::cout << "Invisibilis DLL unloading" << std::endl;
             FreeConsole();
 #endif
             break;

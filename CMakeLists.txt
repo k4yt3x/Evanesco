@@ -15,11 +15,14 @@ qt_standard_project_setup()
 
 qt_add_executable(Evanesco
     WIN32
-    src/resources.rc
-    src/main.cpp
     src/aboutdialog.cpp
     src/aboutdialog.h
     src/aboutdialog.ui
+    src/hashutils.cpp
+    src/hashutils.h
+    src/ipcutils.cpp
+    src/ipcutils.h
+    src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
     src/mainwindow.ui
@@ -28,10 +31,13 @@ qt_add_executable(Evanesco
     src/prefdialog.ui
     src/procutils.cpp
     src/procutils.h
+    src/randutils.cpp
+    src/randutils.h
+    src/resources.rc
     src/settings.cpp
     src/settings.h
-    src/titleutils.cpp
-    src/titleutils.h
+    src/tempfile.cpp
+    src/tempfile.h
     src/windowhider.cpp
     src/windowhider.h
 )

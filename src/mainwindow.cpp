@@ -4,8 +4,8 @@
 #include "aboutdialog.h"
 #include "prefdialog.h"
 #include "procutils.h"
+#include "randutils.h"
 #include "settings.h"
-#include "titleutils.h"
 #include "windowhider.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -125,9 +125,9 @@ void MainWindow::showEvent(QShowEvent* event) {
 
 void MainWindow::onRandomizeWindowTitlesChanged(bool enabled) {
     if (enabled) {
-        applyRandomizedTitles();
+        this->setWindowTitle(RandUtils::generateRandomTitle());
     } else {
-        restoreOriginalTitles();
+        this->setWindowTitle(originalMainWindowTitle);
     }
 }
 
@@ -139,17 +139,8 @@ void MainWindow::onHideTaskbarIconChanged(bool enabled) {
         flags &= ~Qt::Tool;
     }
     this->setWindowFlags(flags);
-    this->show();  // Re-show the window to apply flag changes
-}
-
-void MainWindow::applyRandomizedTitles() {
-    // Randomize main window title using TitleUtils
-    this->setWindowTitle(TitleUtils::generateRandomTitle());
-}
-
-void MainWindow::restoreOriginalTitles() {
-    // Restore original main window title
-    this->setWindowTitle(originalMainWindowTitle);
+    // Re-show the window to apply flag changes
+    this->show();
 }
 
 void MainWindow::setupWindowsTable() {
@@ -297,11 +288,11 @@ void MainWindow::performSingleWindowOperation(
     bool success = false;
 
     if (isWindowsTabActive()) {
-        success = hideOperation ? WindowHider::HideWindow(info.hwnd, &errorMsg)
-                                : WindowHider::UnhideWindow(info.hwnd, &errorMsg);
+        success = hideOperation ? WindowHider::HideWindow(info.hwnd, false, &errorMsg)
+                                : WindowHider::UnhideWindow(info.hwnd, false, &errorMsg);
     } else {
-        success = hideOperation ? WindowHider::HideProcessWindows(info.pid, &errorMsg)
-                                : WindowHider::UnhideProcessWindows(info.pid, &errorMsg);
+        success = hideOperation ? WindowHider::HideProcessWindows(info.pid, false, &errorMsg)
+                                : WindowHider::UnhideProcessWindows(info.pid, false, &errorMsg);
     }
 
     if (success) {
@@ -325,11 +316,15 @@ void MainWindow::showOperationResult(
     QString operationNamePast = hideOperation ? "hidden" : "unhidden";
 
     if (failureCount == 0) {
-        QString message = QString("Successfully %1 %2 window(s)!").arg(operationNamePast).arg(successCount);
-        QMessageBox::information(this, "Success", message);
+        // Success case - only show in status bar
+        QString statusMessage = QString("Successfully %1 %2 window(s)!").arg(operationNamePast).arg(successCount);
+        // Show for 5 seconds
+        statusBar()->showMessage(statusMessage, 5000);
         return;
     }
 
+    // Error case - show brief error in status bar AND popup with details
+    QString statusMessage;
     QString failureDetails;
     for (int i = 0; i < failedProcesses.size() && i < failureReasons.size(); ++i) {
         failureDetails += QString("• %1: %2").arg(failedProcesses[i], failureReasons[i]);
@@ -341,14 +336,19 @@ void MainWindow::showOperationResult(
     }
 
     if (successCount > 0) {
+        statusMessage =
+            QString("Partial success: %1 %2, %3 failed").arg(successCount).arg(operationNamePast).arg(failureCount);
         QString message = QString("%1 %2 window(s), failed to %3 %4 window(s):\n\n")
                               .arg(operationNamePast.at(0).toUpper() + operationNamePast.mid(1))
                               .arg(successCount)
                               .arg(operationName)
                               .arg(failureCount);
+        statusBar()->showMessage(statusMessage, 5000);
         QMessageBox::warning(this, "Partial Success", message + failureDetails);
     } else {
+        statusMessage = QString("Failed to %1 %2 window(s)").arg(operationName).arg(failureCount);
         QString message = QString("Failed to %1 the following windows:\n\n").arg(operationName);
+        statusBar()->showMessage(statusMessage, 5000);
         QMessageBox::critical(this, "Operation Failed", message + failureDetails);
     }
 }
@@ -403,7 +403,8 @@ QSet<HWND> MainWindow::getSelectedWindowHandles() const {
     for (const QModelIndex& index : selectedRows) {
         int row = index.row();
         if (row < table->rowCount()) {
-            QTableWidgetItem* handleItem = table->item(row, 2);  // Handle is in column 2
+            // Handle is in column 2
+            QTableWidgetItem* handleItem = table->item(row, 2);
             if (handleItem) {
                 QString handleText = handleItem->text();
                 bool ok;
@@ -425,7 +426,8 @@ QSet<DWORD> MainWindow::getSelectedProcessPIDs() const {
     for (const QModelIndex& index : selectedRows) {
         int row = index.row();
         if (row < table->rowCount()) {
-            QTableWidgetItem* pidItem = table->item(row, 2);  // PID is in column 2
+            // PID is in column 2
+            QTableWidgetItem* pidItem = table->item(row, 2);
             if (pidItem) {
                 QString pidText = pidItem->text();
                 bool ok;
@@ -449,7 +451,8 @@ void MainWindow::restoreWindowSelection(const QSet<HWND>& selectedHandles) {
     selectionModel->clearSelection();
 
     for (int row = 0; row < table->rowCount(); ++row) {
-        QTableWidgetItem* handleItem = table->item(row, 2);  // Handle is in column 2
+        // Handle is in column 2
+        QTableWidgetItem* handleItem = table->item(row, 2);
         if (handleItem) {
             QString handleText = handleItem->text();
             bool ok;
@@ -473,7 +476,8 @@ void MainWindow::restoreProcessSelection(const QSet<DWORD>& selectedPIDs) {
     selectionModel->clearSelection();
 
     for (int row = 0; row < table->rowCount(); ++row) {
-        QTableWidgetItem* pidItem = table->item(row, 2);  // PID is in column 2
+        // PID is in column 2
+        QTableWidgetItem* pidItem = table->item(row, 2);
         if (pidItem) {
             QString pidText = pidItem->text();
             bool ok;

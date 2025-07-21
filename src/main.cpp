@@ -1,15 +1,17 @@
 #include "mainwindow.h"
-#include "settings.h"
-#include "windowhider.h"
 
 #include <fcntl.h>
 #include <io.h>
+
 #include <windows.h>
 
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QTextStream>
+
+#include "settings.h"
+#include "windowhider.h"
 
 enum class Operation {
     None,
@@ -174,7 +176,8 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        Target target;  // Initialize as invalid
+        // Initialize as invalid
+        Target target;
         if (hasProcess) {
             QString processIdStr = parser.value(processOption);
             bool ok;

@@ -1,5 +1,6 @@
 #include "windowhider.h"
 
+#include <memory>
 #include <string>
 
 #include <Psapi.h>
@@ -11,25 +12,27 @@
 #include <QFile>
 #include <QLoggingCategory>
 
+#include "hashutils.h"
+#include "ipcutils.h"
 #include "procutils.h"
-
-#pragma comment(lib, "psapi.lib")
+#include "settings.h"
+#include "tempfile.h"
 
 namespace {
 constexpr DWORD kThreadTimeoutMs = 2000;
 }
 
-bool WindowHider::HideProcessWindows(DWORD processId, QString* errorMessage) {
+bool WindowHider::HideProcessWindows(DWORD processId, bool persistent, QString* errorMessage) {
     HWND mainWindow = findMainWindowForProcess(processId);
     if (!mainWindow) {
         setErrorMessage(errorMessage, "Could not find main window for process");
         return false;
     }
 
-    return performWindowOperation(processId, mainWindow, true, errorMessage);
+    return performWindowOperation(processId, mainWindow, true, persistent, errorMessage);
 }
 
-bool WindowHider::HideWindow(HWND windowHandle, QString* errorMessage) {
+bool WindowHider::HideWindow(HWND windowHandle, bool persistent, QString* errorMessage) {
     if (!IsWindow(windowHandle)) {
         setErrorMessage(errorMessage, "Window handle is not valid");
         return false;
@@ -41,20 +44,20 @@ bool WindowHider::HideWindow(HWND windowHandle, QString* errorMessage) {
         return false;
     }
 
-    return performWindowOperation(processId, windowHandle, true, errorMessage);
+    return performWindowOperation(processId, windowHandle, true, persistent, errorMessage);
 }
 
-bool WindowHider::UnhideProcessWindows(DWORD processId, QString* errorMessage) {
+bool WindowHider::UnhideProcessWindows(DWORD processId, bool persistent, QString* errorMessage) {
     HWND mainWindow = findMainWindowForProcess(processId);
     if (!mainWindow) {
         setErrorMessage(errorMessage, "Could not find main window for process");
         return false;
     }
 
-    return performWindowOperation(processId, mainWindow, false, errorMessage);
+    return performWindowOperation(processId, mainWindow, false, persistent, errorMessage);
 }
 
-bool WindowHider::UnhideWindow(HWND windowHandle, QString* errorMessage) {
+bool WindowHider::UnhideWindow(HWND windowHandle, bool persistent, QString* errorMessage) {
     if (!IsWindow(windowHandle)) {
         setErrorMessage(errorMessage, "Window handle is not valid");
         return false;
@@ -66,13 +69,14 @@ bool WindowHider::UnhideWindow(HWND windowHandle, QString* errorMessage) {
         return false;
     }
 
-    return performWindowOperation(processId, windowHandle, false, errorMessage);
+    return performWindowOperation(processId, windowHandle, false, persistent, errorMessage);
 }
 
 bool WindowHider::performWindowOperation(
     DWORD processId,
     HWND windowHandle,
     bool hideOperation,
+    bool persistent,
     QString* errorMessage
 ) {
     Q_UNUSED(windowHandle);
@@ -106,7 +110,7 @@ bool WindowHider::performWindowOperation(
     bool is64BitSystem = (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64);
     bool is64BitTarget = is64BitSystem && !isWow64;
 
-    bool result = performDllInjection(processId, is64BitTarget, hideOperation, errorMessage);
+    bool result = performInvisibilisDllInjection(processId, is64BitTarget, hideOperation, persistent, errorMessage);
     CloseHandle(hProcess);
 
     return result;
@@ -155,60 +159,110 @@ bool WindowHider::validateProcess(DWORD processId, QString* errorMessage) {
     return true;
 }
 
-bool WindowHider::resolveDllPaths(DllPaths& paths, QString* errorMessage) {
+std::string WindowHider::getInvisibilisDllPath(bool is64Bit, QString* errorMessage) {
     QString appDir = QCoreApplication::applicationDirPath();
+    std::string dllPath = (appDir + (is64Bit ? "/Invisibilis64.dll" : "/Invisibilis32.dll")).toStdString();
 
-    paths.evanesce64Path = (appDir + "/Evanesce64.dll").toStdString();
-    paths.evanesce32Path = (appDir + "/Evanesce32.dll").toStdString();
-    paths.revela64Path = (appDir + "/Revela64.dll").toStdString();
-    paths.revela32Path = (appDir + "/Revela32.dll").toStdString();
-
-    if (!QFile::exists(QString::fromStdString(paths.evanesce64Path))) {
-        setErrorMessage(errorMessage, "64-bit Evanesce DLL not found: " + QString::fromStdString(paths.evanesce64Path));
-        return false;
-    }
-
-    if (!QFile::exists(QString::fromStdString(paths.evanesce32Path))) {
-        setErrorMessage(errorMessage, "32-bit Evanesce DLL not found: " + QString::fromStdString(paths.evanesce32Path));
-        return false;
-    }
-
-    if (!QFile::exists(QString::fromStdString(paths.revela64Path))) {
-        setErrorMessage(errorMessage, "64-bit Revela DLL not found: " + QString::fromStdString(paths.revela64Path));
-        return false;
-    }
-
-    if (!QFile::exists(QString::fromStdString(paths.revela32Path))) {
-        setErrorMessage(errorMessage, "32-bit Revela DLL not found: " + QString::fromStdString(paths.revela32Path));
-        return false;
-    }
-
-    return true;
-}
-
-std::string WindowHider::getDllPath(bool is64Bit, bool hideOperation, QString* errorMessage) {
-    DllPaths paths;
-    if (!resolveDllPaths(paths, errorMessage)) {
+    if (!QFile::exists(QString::fromStdString(dllPath))) {
+        setErrorMessage(errorMessage, QString("Invisibilis DLL not found: %1").arg(QString::fromStdString(dllPath)));
         return "";
     }
 
-    if (hideOperation) {
-        return is64Bit ? paths.evanesce64Path : paths.evanesce32Path;
-    } else {
-        return is64Bit ? paths.revela64Path : paths.revela32Path;
-    }
+    return dllPath;
 }
 
-bool WindowHider::performDllInjection(DWORD processId, bool is64Bit, bool hideOperation, QString* errorMessage) {
-    std::string dllPath = getDllPath(is64Bit, hideOperation, errorMessage);
+bool WindowHider::performInvisibilisDllInjection(
+    DWORD processId,
+    bool is64Bit,
+    bool hideOperation,
+    bool persistent,
+    QString* errorMessage
+) {
+    std::string dllPath = getInvisibilisDllPath(is64Bit, errorMessage);
     if (dllPath.empty()) {
         return false;
     }
 
-    return injectDll(processId, dllPath, is64Bit, errorMessage);
+    return injectInvisibilisDll(processId, hideOperation, persistent, is64Bit, errorMessage);
 }
 
-bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is64BitTarget, QString* errorMessage) {
+bool WindowHider::injectInvisibilisDll(
+    DWORD processId,
+    bool hideOperation,
+    bool persistent,
+    bool is64BitTarget,
+    QString* errorMessage
+) {
+    // Create named shared memory with operation parameters
+    std::string mappingName = HashUtils::generateMappingName(static_cast<uint32_t>(processId));
+    qDebug() << "Creating shared memory mapping:" << QString::fromStdString(mappingName);
+
+    HANDLE hMapFile = CreateFileMappingA(
+        INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(OperationParams), mappingName.c_str()
+    );
+
+    if (!hMapFile) {
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to create shared memory mapping: %1").arg(getWindowsErrorString(GetLastError()))
+        );
+        return false;
+    }
+
+    OperationParams* params =
+        static_cast<OperationParams*>(MapViewOfFile(hMapFile, FILE_MAP_WRITE, 0, 0, sizeof(OperationParams)));
+
+    if (!params) {
+        CloseHandle(hMapFile);
+        setErrorMessage(
+            errorMessage, QString("Failed to map view of shared memory: %1").arg(getWindowsErrorString(GetLastError()))
+        );
+        return false;
+    }
+
+    qDebug() << "Setting operation parameters - Hide:" << hideOperation << "Persistent:" << persistent;
+
+    // Set operation parameters using bitwise operations
+    params->flags = 0;
+    // false=hide, true=unhide
+    IpcUtils::setOperationFlag(params->flags, !hideOperation);
+    IpcUtils::setPersistentFlag(params->flags, persistent);
+
+    qDebug() << "Final flags value:" << params->flags;
+    UnmapViewOfFile(params);
+
+    // Get original DLL path
+    std::string originalDllPath = getInvisibilisDllPath(is64BitTarget, errorMessage);
+    if (originalDllPath.empty()) {
+        CloseHandle(hMapFile);
+        return false;
+    }
+
+    // Check if we should randomize the DLL filename
+    Settings* settings = Settings::instance();
+    std::string dllPath = originalDllPath;
+    std::unique_ptr<TempFile> tempFile;
+    bool useRandomizedName = settings->randomizeDllFileName();
+
+    if (useRandomizedName) {
+        // Create a temporary file with randomized name using RAII
+        tempFile = std::make_unique<TempFile>(originalDllPath, ".dll");
+        if (!tempFile->isValid()) {
+            CloseHandle(hMapFile);
+            setErrorMessage(
+                errorMessage,
+                QString("Failed to create temporary DLL file: %1").arg(QString::fromStdString(tempFile->errorMessage()))
+            );
+            return false;
+        }
+
+        dllPath = tempFile->path();
+        qDebug() << "Using randomized DLL path:" << QString::fromStdString(dllPath);
+    } else {
+        qDebug() << "Using original DLL path:" << QString::fromStdString(dllPath);
+    }
+
+    // Standard DLL injection
     HANDLE hProcess = OpenProcess(
         PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
         FALSE,
@@ -216,6 +270,7 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
     );
 
     if (!hProcess) {
+        CloseHandle(hMapFile);
         setErrorMessage(errorMessage, "Failed to open target process for injection");
         return false;
     }
@@ -227,6 +282,7 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
 
     if (!remotePathAddr) {
         CloseHandle(hProcess);
+        CloseHandle(hMapFile);
         setErrorMessage(errorMessage, "Failed to allocate memory for DLL path in target process");
         return false;
     }
@@ -234,6 +290,7 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
     if (!WriteProcessMemory(hProcess, remotePathAddr, wideDllPath.c_str(), pathSize, nullptr)) {
         VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
         CloseHandle(hProcess);
+        CloseHandle(hMapFile);
         setErrorMessage(errorMessage, "Failed to write DLL path to target process");
         return false;
     }
@@ -242,6 +299,7 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
     if (!getRemoteLoadLibraryAddress(processId, is64BitTarget, loadLibraryAddr, errorMessage)) {
         VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
         CloseHandle(hProcess);
+        CloseHandle(hMapFile);
         return false;
     }
 
@@ -252,6 +310,7 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
     if (!hThread) {
         VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
         CloseHandle(hProcess);
+        CloseHandle(hMapFile);
         setErrorMessage(errorMessage, "Failed to create remote thread");
         return false;
     }
@@ -262,9 +321,12 @@ bool WindowHider::injectDll(DWORD processId, const std::string& dllPath, bool is
     CloseHandle(hThread);
     VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
     CloseHandle(hProcess);
+    CloseHandle(hMapFile);
+
+    // TempFile destructor will automatically clean up the temporary file
 
     if (success && exitCode != 0) {
-        qDebug() << "DLL injection successful";
+        qDebug() << "Invisibilis DLL injection successful";
         return true;
     } else if (success && exitCode == 0) {
         setErrorMessage(errorMessage, "DLL injection failed - no windows were processed or LoadLibrary failed");

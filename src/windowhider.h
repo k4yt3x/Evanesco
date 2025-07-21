@@ -6,13 +6,15 @@
 
 #include <QString>
 
+#include "ipcutils.h"
+
 class WindowHider {
    public:
     // Simplified static interface
-    static bool HideProcessWindows(DWORD processId, QString* errorMessage = nullptr);
-    static bool HideWindow(HWND windowHandle, QString* errorMessage = nullptr);
-    static bool UnhideProcessWindows(DWORD processId, QString* errorMessage = nullptr);
-    static bool UnhideWindow(HWND windowHandle, QString* errorMessage = nullptr);
+    static bool HideProcessWindows(DWORD processId, bool persistent = false, QString* errorMessage = nullptr);
+    static bool HideWindow(HWND windowHandle, bool persistent = false, QString* errorMessage = nullptr);
+    static bool UnhideProcessWindows(DWORD processId, bool persistent = false, QString* errorMessage = nullptr);
+    static bool UnhideWindow(HWND windowHandle, bool persistent = false, QString* errorMessage = nullptr);
 
    private:
     // Helper structure for window enumeration
@@ -21,22 +23,34 @@ class WindowHider {
         HWND mainWindow;
     };
 
-    // Helper structure for DLL paths
-    struct DllPaths {
-        std::string evanesce64Path;
-        std::string evanesce32Path;
-        std::string revela64Path;
-        std::string revela32Path;
-    };
+    // Use shared definitions
+    using OperationParams = IpcUtils::OperationParams;
 
     // Core implementation methods
-    static bool performWindowOperation(DWORD processId, HWND windowHandle, bool hideOperation, QString* errorMessage);
+    static bool performWindowOperation(
+        DWORD processId,
+        HWND windowHandle,
+        bool hideOperation,
+        bool persistent,
+        QString* errorMessage
+    );
     static HWND findMainWindowForProcess(DWORD processId);
     static bool validateProcess(DWORD processId, QString* errorMessage);
-    static bool resolveDllPaths(DllPaths& paths, QString* errorMessage);
-    static std::string getDllPath(bool is64Bit, bool hideOperation, QString* errorMessage);
-    static bool performDllInjection(DWORD processId, bool is64Bit, bool hideOperation, QString* errorMessage);
-    static bool injectDll(DWORD processId, const std::string& dllPath, bool is64BitTarget, QString* errorMessage);
+    static std::string getInvisibilisDllPath(bool is64Bit, QString* errorMessage);
+    static bool performInvisibilisDllInjection(
+        DWORD processId,
+        bool is64Bit,
+        bool hideOperation,
+        bool persistent,
+        QString* errorMessage
+    );
+    static bool injectInvisibilisDll(
+        DWORD processId,
+        bool hideOperation,
+        bool persistent,
+        bool is64BitTarget,
+        QString* errorMessage
+    );
     static bool waitForInjectionCompletion(HANDLE hThread, DWORD& exitCode, QString* errorMessage);
 
     // Utility methods
