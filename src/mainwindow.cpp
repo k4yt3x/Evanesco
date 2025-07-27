@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     QString title = "Evanesco " + kVersion;
 
     // Check for admin privileges and append (Admin) to the title if elevated
-    if (ProcUtils::isCurrentProcessAdmin()) {
+    if (ProcUtils::isProcessElevated(GetCurrentProcess())) {
         title += " (Admin)";
     }
 
@@ -560,7 +560,7 @@ QList<ProcessInfo> MainWindow::getRunningProcesses() {
             }
 
             // Get the main window handle for this process
-            HWND mainWindow = ProcUtils::getMainWindowHandle(pe32.th32ProcessID);
+            HWND mainWindow = ProcUtils::getProcessMainWindowHandle(pe32.th32ProcessID);
             ProcessInfo info;
             info.pid = pe32.th32ProcessID;
             info.processName = QString::fromWCharArray(pe32.szExeFile);

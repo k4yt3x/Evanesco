@@ -8,7 +8,7 @@
 namespace ProcUtils {
 
 QString getProcessArchitecture(DWORD pid) {
-    HANDLE hProcess = openProcess(pid);
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     if (hProcess == nullptr) {
         return "Unknown";
     }
@@ -20,7 +20,7 @@ QString getProcessArchitecture(DWORD pid) {
 }
 
 QString getProcessExecutablePath(DWORD pid) {
-    HANDLE hProcess = openProcess(pid);
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     if (hProcess == nullptr) {
         return QString();
     }
@@ -37,7 +37,7 @@ QString getProcessExecutablePath(DWORD pid) {
     return QString();
 }
 
-HWND getMainWindowHandle(DWORD pid) {
+HWND getProcessMainWindowHandle(DWORD pid) {
     struct EnumData {
         DWORD targetPid;
         HWND mainWindow;
@@ -89,23 +89,6 @@ HWND getMainWindowHandle(DWORD pid) {
     return data.mainWindow;
 }
 
-bool isProcessVisible(DWORD pid) {
-    return getMainWindowHandle(pid) != nullptr;
-}
-
-bool is64BitProcess(DWORD pid) {
-    HANDLE hProcess = openProcess(pid);
-    if (hProcess == nullptr) {
-        // Assume 64-bit if we can't determine
-        return true;
-    }
-
-    bool result = is64BitProcess(hProcess);
-    CloseHandle(hProcess);
-
-    return result;
-}
-
 bool is64BitProcess(HANDLE hProcess) {
     BOOL isWow64 = FALSE;
 
@@ -115,15 +98,6 @@ bool is64BitProcess(HANDLE hProcess) {
     }
 
     return !isWow64;
-}
-
-HANDLE openProcess(DWORD pid, DWORD desiredAccess) {
-    HANDLE hProcess = OpenProcess(desiredAccess, FALSE, pid);
-    if (hProcess == nullptr) {
-        // Try with reduced permissions
-        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
-    }
-    return hProcess;
 }
 
 bool getExportRva32(LPCWSTR path32, LPCSTR functionName, DWORD* pRva) {
@@ -257,9 +231,9 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
     return true;
 }
 
-bool isCurrentProcessAdmin() {
+bool isProcessElevated(HANDLE hProcess) {
     HANDLE hToken = nullptr;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+    if (!OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
         return false;
     }
 
