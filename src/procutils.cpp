@@ -258,20 +258,21 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
 }
 
 bool isCurrentProcessAdmin() {
-    BOOL isAdmin = FALSE;
-    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
-    PSID adminGroup = nullptr;
-
-    if (AllocateAndInitializeSid(
-            &ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &adminGroup
-        )) {
-        if (!CheckTokenMembership(nullptr, adminGroup, &isAdmin)) {
-            isAdmin = FALSE;
-        }
-        FreeSid(adminGroup);
+    HANDLE hToken = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        return false;
     }
 
-    return isAdmin == TRUE;
+    TOKEN_ELEVATION elevation;
+    DWORD dwSize = sizeof(TOKEN_ELEVATION);
+
+    if (!GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &dwSize)) {
+        CloseHandle(hToken);
+        return false;
+    }
+
+    CloseHandle(hToken);
+    return elevation.TokenIsElevated != 0;
 }
 
 }  // namespace ProcUtils
