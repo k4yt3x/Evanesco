@@ -14,7 +14,14 @@ const QColor MainWindow::kHiddenWindowBackgroundColor(128, 0, 128, 100);
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
-    setWindowTitle("Evanesco " + kVersion);
+    QString title = "Evanesco " + kVersion;
+
+    // Check for admin privileges and append (Admin) to the title if elevated
+    if (ProcUtils::isCurrentProcessAdmin()) {
+        title += " (Admin)";
+    }
+
+    setWindowTitle(title);
 
     // Setup the tables
     setupWindowsTable();

@@ -56,7 +56,7 @@ class Settings : public QObject {
     QSettings* m_settings;
 
     // Default values
-    static constexpr bool kDefaultAutoRefresh = true;
+    static constexpr bool kDefaultAutoRefresh = false;
     static constexpr double kDefaultRefreshInterval = 1.0;
     static constexpr bool kDefaultHideFromScreenCapture = false;
     static constexpr bool kDefaultRandomizeWindowTitles = false;

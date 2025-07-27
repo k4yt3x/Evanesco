@@ -40,7 +40,10 @@ bool WindowHider::HideWindow(HWND windowHandle, bool hideTaskbarIcon, QString* e
 
     DWORD processId;
     if (!GetWindowThreadProcessId(windowHandle, &processId)) {
-        setErrorMessage(errorMessage, "Failed to get process ID from window handle");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to get process ID from window handle: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -65,7 +68,10 @@ bool WindowHider::UnhideWindow(HWND windowHandle, bool hideTaskbarIcon, QString*
 
     DWORD processId;
     if (!GetWindowThreadProcessId(windowHandle, &processId)) {
-        setErrorMessage(errorMessage, "Failed to get process ID from window handle");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to get process ID from window handle: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -101,7 +107,10 @@ bool WindowHider::performWindowOperation(
     BOOL isWow64 = FALSE;
     if (!IsWow64Process(hProcess, &isWow64)) {
         CloseHandle(hProcess);
-        setErrorMessage(errorMessage, "Failed to determine target process architecture");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to determine target process architecture: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -144,12 +153,23 @@ BOOL CALLBACK WindowHider::EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 bool WindowHider::validateProcess(DWORD processId, QString* errorMessage) {
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processId);
     if (!hProcess) {
-        setErrorMessage(errorMessage, "Failed to open target process for validation");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to open target process for validation: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
     DWORD exitCode;
-    bool isRunning = GetExitCodeProcess(hProcess, &exitCode) && (exitCode == STILL_ACTIVE);
+    if (!GetExitCodeProcess(hProcess, &exitCode)) {
+        CloseHandle(hProcess);
+        setErrorMessage(
+            errorMessage, QString("Failed to get process exit code: %1").arg(getWindowsErrorString(GetLastError()))
+        );
+        return false;
+    }
+
+    bool isRunning = (exitCode == STILL_ACTIVE);
     CloseHandle(hProcess);
 
     if (!isRunning) {
@@ -272,7 +292,10 @@ bool WindowHider::injectInvisibilisDll(
 
     if (!hProcess) {
         CloseHandle(hMapFile);
-        setErrorMessage(errorMessage, "Failed to open target process for injection");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to open target process for injection: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -284,7 +307,11 @@ bool WindowHider::injectInvisibilisDll(
     if (!remotePathAddr) {
         CloseHandle(hProcess);
         CloseHandle(hMapFile);
-        setErrorMessage(errorMessage, "Failed to allocate memory for DLL path in target process");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to allocate memory for DLL path in target process: %1")
+                .arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -292,7 +319,10 @@ bool WindowHider::injectInvisibilisDll(
         VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
         CloseHandle(hProcess);
         CloseHandle(hMapFile);
-        setErrorMessage(errorMessage, "Failed to write DLL path to target process");
+        setErrorMessage(
+            errorMessage,
+            QString("Failed to write DLL path to target process: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -312,7 +342,9 @@ bool WindowHider::injectInvisibilisDll(
         VirtualFreeEx(hProcess, remotePathAddr, 0, MEM_RELEASE);
         CloseHandle(hProcess);
         CloseHandle(hMapFile);
-        setErrorMessage(errorMessage, "Failed to create remote thread");
+        setErrorMessage(
+            errorMessage, QString("Failed to create remote thread: %1").arg(getWindowsErrorString(GetLastError()))
+        );
         return false;
     }
 
@@ -346,10 +378,20 @@ bool WindowHider::getRemoteLoadLibraryAddress(
     if (is64BitTarget) {
         HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
         if (!hKernel32) {
-            setErrorMessage(errorMessage, "Failed to get kernel32.dll handle");
+            setErrorMessage(
+                errorMessage,
+                QString("Failed to get kernel32.dll handle: %1").arg(getWindowsErrorString(GetLastError()))
+            );
             return false;
         }
         address = GetProcAddress(hKernel32, "LoadLibraryW");
+        if (!address) {
+            setErrorMessage(
+                errorMessage,
+                QString("Failed to get LoadLibraryW address: %1").arg(getWindowsErrorString(GetLastError()))
+            );
+            return false;
+        }
     } else {
         DWORD addr32 = 0;
         if (!ProcUtils::getRemoteAddress32(processId, "LoadLibraryW", "kernel32.dll", &addr32)) {
@@ -357,11 +399,10 @@ bool WindowHider::getRemoteLoadLibraryAddress(
             return false;
         }
         address = reinterpret_cast<FARPROC>(static_cast<uintptr_t>(addr32));
-    }
-
-    if (!address) {
-        setErrorMessage(errorMessage, "Failed to get LoadLibraryW address");
-        return false;
+        if (!address) {
+            setErrorMessage(errorMessage, "Failed to get LoadLibraryW address in 32-bit target process");
+            return false;
+        }
     }
 
     return true;

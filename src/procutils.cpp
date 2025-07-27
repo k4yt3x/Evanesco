@@ -52,23 +52,32 @@ HWND getMainWindowHandle(DWORD pid) {
             DWORD windowPid;
             GetWindowThreadProcessId(hwnd, &windowPid);
 
-            if (windowPid == pData->targetPid) {
-                // Check if window is visible and has a title
-                if (IsWindowVisible(hwnd)) {
-                    wchar_t title[256];
-                    if (GetWindowTextW(hwnd, title, sizeof(title) / sizeof(wchar_t)) > 0) {
-                        // Check if it's a main window (has no owner and is not a tool window)
-                        LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
-                        LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+            if (windowPid != pData->targetPid) {
+                // Continue enumeration
+                return TRUE;
+            }
 
-                        if ((style & WS_VISIBLE) && !(exStyle & WS_EX_TOOLWINDOW) &&
-                            GetWindow(hwnd, GW_OWNER) == nullptr && !(style & WS_CHILD)) {
-                            pData->mainWindow = hwnd;
-                            // Stop enumeration
-                            return FALSE;
-                        }
-                    }
-                }
+            // Check if window is visible and has a title
+            if (!IsWindowVisible(hwnd)) {
+                // Continue enumeration
+                return TRUE;
+            }
+
+            wchar_t title[256];
+            if (GetWindowTextW(hwnd, title, sizeof(title) / sizeof(wchar_t)) <= 0) {
+                // Continue enumeration
+                return TRUE;
+            }
+
+            // Check if it's a main window (has no owner and is not a tool window)
+            LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+            LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+
+            if ((style & WS_VISIBLE) && !(exStyle & WS_EX_TOOLWINDOW) && GetWindow(hwnd, GW_OWNER) == nullptr &&
+                !(style & WS_CHILD)) {
+                pData->mainWindow = hwnd;
+                // Stop enumeration
+                return FALSE;
             }
 
             // Continue enumeration
@@ -246,6 +255,23 @@ bool getRemoteAddress32(DWORD pid, LPCSTR functionName, LPCSTR moduleName, DWORD
     *pAddr32 = static_cast<DWORD>(moduleRemoteBase + rva);
     CloseHandle(hProc);
     return true;
+}
+
+bool isCurrentProcessAdmin() {
+    BOOL isAdmin = FALSE;
+    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+    PSID adminGroup = nullptr;
+
+    if (AllocateAndInitializeSid(
+            &ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &adminGroup
+        )) {
+        if (!CheckTokenMembership(nullptr, adminGroup, &isAdmin)) {
+            isAdmin = FALSE;
+        }
+        FreeSid(adminGroup);
+    }
+
+    return isAdmin == TRUE;
 }
 
 }  // namespace ProcUtils

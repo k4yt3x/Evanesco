@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Indicator in the window title to show if Evanesco is running with administrator privileges.
+
+### Changed
+
+- Improve `WindowHider` logging clarity.
+- Disable auto refresh by default to prevent selection issues.
+
 ## [1.2.0] - 2025-07-21
 
 ### Added

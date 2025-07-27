@@ -1,9 +1,10 @@
-#define ApplicationVersion "1.2.0"
+#define ApplicationVersion "1.3.0"
 
 [Setup]
 AppName=Evanesco
 AppVersion={#ApplicationVersion}
 AppId={{564d966a-2bd9-4a33-b7f9-1c48510b925e}
+ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DefaultDirName={localappdata}\Programs\Evanesco
 DefaultGroupName=Evanesco
@@ -13,6 +14,7 @@ Compression=lzma2/max
 SolidCompression=yes
 UninstallDisplayIcon={app}\Evanesco.exe
 PrivilegesRequired=lowest
+LicenseFile=LICENSE
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &Desktop shortcut"; GroupDescription: "Additional icons:"
