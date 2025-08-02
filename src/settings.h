@@ -49,6 +49,9 @@ class Settings : public QObject {
     int maxWindowCreationWaitMs() const;
     void setMaxWindowCreationWaitMs(int waitMs);
 
+    bool hideAutohideProcessesOnStart() const;
+    void setHideAutohideProcessesOnStart(bool enabled);
+
     QStringList autohideList() const;
     void setAutohideList(const QStringList& list);
 
@@ -71,6 +74,7 @@ class Settings : public QObject {
     void hideTargetTaskbarIconsChanged(bool enabled);
     void autohideEnabledChanged(bool enabled);
     void autohideNotifyChanged(bool enabled);
+    void hideAutohideProcessesOnStartChanged(bool enabled);
     void autohideListChanged(const QStringList& list);
 
    private:
@@ -93,4 +97,5 @@ class Settings : public QObject {
     static constexpr bool kDefaultHideTargetTaskbarIcons = false;
     static constexpr bool kDefaultAutohideEnabled = false;
     static constexpr bool kDefaultAutohideNotify = true;
+    static constexpr bool kDefaultHideAutohideProcessesOnStart = false;
 };

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Indicator in the window title to show if Evanesco is running with administrator privileges.
 - The Autohide feature to automatically hide windows added to a list.
+- The option to hide processes in the autohide list on Evanesco startup.
 - The option to minimize Evanesco to the system tray.
 - The option to randomize the tray icon's tooltip text.
 - The option to randomize the tray icon.

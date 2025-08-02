@@ -156,6 +156,17 @@ void Settings::setMaxWindowCreationWaitMs(int waitMs) {
     }
 }
 
+bool Settings::hideAutohideProcessesOnStart() const {
+    return m_settings->value("autohide/hideAutohideProcessesOnStart", kDefaultHideAutohideProcessesOnStart).toBool();
+}
+
+void Settings::setHideAutohideProcessesOnStart(bool enabled) {
+    if (hideAutohideProcessesOnStart() != enabled) {
+        m_settings->setValue("autohide/hideAutohideProcessesOnStart", enabled);
+        emit hideAutohideProcessesOnStartChanged(enabled);
+    }
+}
+
 QStringList Settings::autohideList() const {
     return m_settings->value("autohide/autohideList", QStringList()).toStringList();
 }
@@ -180,6 +191,7 @@ void Settings::resetToDefaults() {
     setHideTargetTaskbarIcons(kDefaultHideTargetTaskbarIcons);
     setAutohideEnabled(kDefaultAutohideEnabled);
     setAutohideNotify(kDefaultAutohideNotify);
+    setHideAutohideProcessesOnStart(kDefaultHideAutohideProcessesOnStart);
     setAutohideList(QStringList());
     sync();
 }

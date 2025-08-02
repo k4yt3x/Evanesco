@@ -27,7 +27,7 @@
 #include <QTableWidgetItem>
 #include <QTimer>
 
-#include "processwatcher.h"
+#include "autohider.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -87,7 +87,7 @@ class MainWindow : public QMainWindow {
    private:
     Ui::MainWindow* ui;
     QTimer* refreshTimer;
-    ProcessWatcher* m_autohideWatcher;
+    Autohider* m_autohideWatcher;
 
     // System tray icon
     QSystemTrayIcon* m_trayIcon;

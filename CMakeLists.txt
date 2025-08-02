@@ -18,6 +18,8 @@ qt_add_executable(Evanesco
     src/aboutdialog.cpp
     src/aboutdialog.h
     src/aboutdialog.ui
+    src/autohider.cpp
+    src/autohider.h
     src/hashutils.cpp
     src/hashutils.h
     src/ipcutils.cpp
@@ -29,8 +31,6 @@ qt_add_executable(Evanesco
     src/prefdialog.cpp
     src/prefdialog.h
     src/prefdialog.ui
-    src/processwatcher.cpp
-    src/processwatcher.h
     src/procutils.cpp
     src/procutils.h
     src/randutils.cpp

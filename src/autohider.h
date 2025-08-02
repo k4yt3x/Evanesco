@@ -14,17 +14,20 @@
 class WmiEventSink;
 class WmiWorkerThread;
 
-class ProcessWatcher : public QObject {
+class Autohider : public QObject {
     Q_OBJECT
 
    public:
-    explicit ProcessWatcher(QObject* parent = nullptr);
-    ~ProcessWatcher();
+    explicit Autohider(QObject* parent = nullptr);
+    ~Autohider();
 
     // Control methods
     void start();
     void stop();
     bool isRunning() const;
+
+    // Process hiding methods
+    void hideExistingProcesses();
 
     // Configuration methods
     void setList(const QStringList& list);
@@ -51,6 +54,11 @@ class ProcessWatcher : public QObject {
     bool isProcessNameInList(const QString& processName) const;
     bool isFullPathInList(const QString& fullPath) const;
     QString normalizePath(const QString& path) const;
+
+    // Helper methods for hideExistingProcesses (to avoid mutex deadlock)
+    bool shouldProcessBeHiddenFromList(const QString& executablePath, const QStringList& list) const;
+    bool isProcessNameInListFromList(const QString& processName, const QStringList& list) const;
+    bool isFullPathInListFromList(const QString& fullPath, const QStringList& list) const;
 
     // Member variables
     WmiWorkerThread* m_workerThread;

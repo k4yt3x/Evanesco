@@ -1,4 +1,7 @@
-#include "processwatcher.h"
+#include "autohider.h"
+
+#include <tlhelp32.h>
+#include <windows.h>
 
 #include <QDebug>
 #include <QDir>
@@ -11,20 +14,20 @@
 #include "settings.h"
 #include "windowhider.h"
 
-ProcessWatcher::ProcessWatcher(QObject* parent) : QObject(parent), m_workerThread(nullptr), m_isRunning(false) {
+Autohider::Autohider(QObject* parent) : QObject(parent), m_workerThread(nullptr), m_isRunning(false) {
     // Create worker thread
     m_workerThread = new WmiWorkerThread(this);
 
     // Connect worker thread signals
-    connect(m_workerThread, &WmiWorkerThread::processCreated, this, &ProcessWatcher::onProcessCreated);
-    connect(m_workerThread, &WmiWorkerThread::wmiError, this, &ProcessWatcher::onWmiError);
+    connect(m_workerThread, &WmiWorkerThread::processCreated, this, &Autohider::onProcessCreated);
+    connect(m_workerThread, &WmiWorkerThread::wmiError, this, &Autohider::onWmiError);
 }
 
-ProcessWatcher::~ProcessWatcher() {
+Autohider::~Autohider() {
     stop();
 }
 
-void ProcessWatcher::start() {
+void Autohider::start() {
     QMutexLocker locker(&m_mutex);
 
     if (m_isRunning) {
@@ -35,7 +38,7 @@ void ProcessWatcher::start() {
     m_workerThread->startWatching();
 }
 
-void ProcessWatcher::stop() {
+void Autohider::stop() {
     QMutexLocker locker(&m_mutex);
 
     if (!m_isRunning) {
@@ -46,22 +49,22 @@ void ProcessWatcher::stop() {
     m_workerThread->stopWatching();
 }
 
-bool ProcessWatcher::isRunning() const {
+bool Autohider::isRunning() const {
     QMutexLocker locker(&m_mutex);
     return m_isRunning;
 }
 
-void ProcessWatcher::setList(const QStringList& list) {
+void Autohider::setList(const QStringList& list) {
     QMutexLocker locker(&m_mutex);
     m_list = list;
 }
 
-QStringList ProcessWatcher::getList() const {
+QStringList Autohider::getList() const {
     QMutexLocker locker(&m_mutex);
     return m_list;
 }
 
-void ProcessWatcher::onProcessCreated(DWORD processId, const QString& processName, const QString& executablePath) {
+void Autohider::onProcessCreated(DWORD processId, const QString& processName, const QString& executablePath) {
     qDebug() << "Process created:" << processName;
 
     emit processDetected(processId, processName, executablePath);
@@ -110,30 +113,69 @@ void ProcessWatcher::onProcessCreated(DWORD processId, const QString& processNam
     }
 }
 
-void ProcessWatcher::onWmiError(const QString& errorMessage) {
+void Autohider::onWmiError(const QString& errorMessage) {
     emit errorOccurred(QString("WMI Error: %1").arg(errorMessage));
 }
 
-bool ProcessWatcher::shouldProcessBeHidden(const QString& executablePath) const {
+bool Autohider::shouldProcessBeHidden(const QString& executablePath) const {
     QString processName = getProcessName(executablePath);
     return isProcessNameInList(processName) || isFullPathInList(executablePath);
 }
 
-bool ProcessWatcher::processHasWindows(DWORD processId) const {
+bool Autohider::shouldProcessBeHiddenFromList(const QString& executablePath, const QStringList& list) const {
+    QString processName = getProcessName(executablePath);
+    return isProcessNameInListFromList(processName, list) || isFullPathInListFromList(executablePath, list);
+}
+
+bool Autohider::isProcessNameInListFromList(const QString& processName, const QStringList& list) const {
+    for (const QString& listEntry : list) {
+        // Skip entries that look like full paths
+        if (listEntry.contains('\\') || listEntry.contains('/')) {
+            continue;
+        }
+        if (processName.compare(listEntry, Qt::CaseInsensitive) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Autohider::isFullPathInListFromList(const QString& fullPath, const QStringList& list) const {
+    QString normalizedFullPath = normalizePath(fullPath);
+
+    for (const QString& listEntry : list) {
+        // Check if list entry is a full path
+        if (listEntry.contains('\\') || listEntry.contains('/')) {
+            QString normalizedListEntry = normalizePath(listEntry);
+
+            if (normalizedFullPath == normalizedListEntry) {
+                return true;
+            }
+
+            // Also check if the list entry is contained in the full path (for relative paths)
+            if (normalizedFullPath.endsWith(normalizedListEntry)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Autohider::processHasWindows(DWORD processId) const {
     HWND mainWindow = ProcUtils::getProcessMainWindowHandle(processId);
     return mainWindow != nullptr;
 }
 
-bool ProcessWatcher::hideProcessWindows(DWORD processId, QString* errorMessage) {
+bool Autohider::hideProcessWindows(DWORD processId, QString* errorMessage) {
     return WindowHider::HideProcessWindows(processId, false, errorMessage);
 }
 
-QString ProcessWatcher::getProcessName(const QString& executablePath) const {
+QString Autohider::getProcessName(const QString& executablePath) const {
     QFileInfo fileInfo(executablePath);
     return fileInfo.fileName();
 }
 
-bool ProcessWatcher::isProcessNameInList(const QString& processName) const {
+bool Autohider::isProcessNameInList(const QString& processName) const {
     QMutexLocker locker(&m_mutex);
     for (const QString& listEntry : m_list) {
         // Skip entries that look like full paths
@@ -147,7 +189,7 @@ bool ProcessWatcher::isProcessNameInList(const QString& processName) const {
     return false;
 }
 
-bool ProcessWatcher::isFullPathInList(const QString& fullPath) const {
+bool Autohider::isFullPathInList(const QString& fullPath) const {
     QMutexLocker locker(&m_mutex);
 
     QString normalizedFullPath = normalizePath(fullPath);
@@ -172,7 +214,7 @@ bool ProcessWatcher::isFullPathInList(const QString& fullPath) const {
     return false;
 }
 
-QString ProcessWatcher::normalizePath(const QString& path) const {
+QString Autohider::normalizePath(const QString& path) const {
     if (path.isEmpty()) {
         return path;
     }
@@ -186,6 +228,102 @@ QString ProcessWatcher::normalizePath(const QString& path) const {
     }
 
     return normalized;
+}
+
+void Autohider::hideExistingProcesses() {
+    // Get a copy of the list to avoid holding the mutex during the entire operation
+    QStringList listCopy;
+    {
+        QMutexLocker locker(&m_mutex);
+        listCopy = m_list;
+    }
+
+    if (listCopy.isEmpty()) {
+        qDebug() << "No processes in autohide list, skipping existing process hiding";
+        return;
+    }
+
+    qDebug() << "Searching for existing processes to hide...";
+
+    // Get all running processes using ProcUtils
+    HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hProcessSnap == INVALID_HANDLE_VALUE) {
+        qDebug() << "Failed to create process snapshot";
+        return;
+    }
+
+    PROCESSENTRY32 pe32;
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+
+    if (!Process32First(hProcessSnap, &pe32)) {
+        CloseHandle(hProcessSnap);
+        qDebug() << "Failed to get first process";
+        return;
+    }
+
+    int hiddenCount = 0;
+    int checkedCount = 0;
+
+    do {
+        DWORD processId = pe32.th32ProcessID;
+
+        // Skip system processes
+        if (processId <= 4) {
+            continue;
+        }
+
+        checkedCount++;
+
+        // Get executable path
+        QString executablePath = ProcUtils::getProcessExecutablePath(processId);
+        if (executablePath.isEmpty()) {
+            continue;
+        }
+
+        // Check if this process should be hidden (use copy to avoid mutex issues)
+        if (shouldProcessBeHiddenFromList(executablePath, listCopy)) {
+            QString processName = getProcessName(executablePath);
+
+            // Check if process has windows (wait with timeout like in onProcessCreated)
+            bool hasWindows = processHasWindows(processId);
+            if (!hasWindows) {
+                int maxWaitMs = Settings::instance()->maxWindowCreationWaitMs();
+                if (maxWaitMs > 0) {
+                    QElapsedTimer timer;
+                    timer.start();
+
+                    while (!hasWindows && timer.elapsed() < maxWaitMs) {
+                        QThread::msleep(kWindowCheckIntervalMs);
+                        hasWindows = processHasWindows(processId);
+                    }
+                }
+            }
+
+            if (hasWindows) {
+                QString errorMessage;
+                if (hideProcessWindows(processId, &errorMessage)) {
+                    hiddenCount++;
+                    qDebug() << "Hidden existing process:" << processName << "(PID:" << processId << ")";
+
+                    // Emit signals for consistency
+                    emit processHidden(processId, processName, executablePath);
+
+                    // Show notification if enabled
+                    if (Settings::instance()->autohideNotify()) {
+                        emit notificationRequested(
+                            "Process Hidden", QString("Existing process '%1' has been hidden").arg(processName)
+                        );
+                    }
+                } else {
+                    qDebug() << "Failed to hide existing process:" << processName << "Error:" << errorMessage;
+                }
+            }
+        }
+    } while (Process32Next(hProcessSnap, &pe32));
+
+    CloseHandle(hProcessSnap);
+
+    qDebug() << "Finished checking existing processes. Checked:" << checkedCount << "Hidden:" << hiddenCount;
 }
 
 // WmiWorkerThread Implementation

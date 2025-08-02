@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>487</width>
-    <height>324</height>
+    <height>391</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -144,6 +144,13 @@
         <widget class="QCheckBox" name="enableAutohideCheckBox">
          <property name="text">
           <string>Enable autohide</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="hideAutohideProcessesOnStartCheckBox">
+         <property name="text">
+          <string>Hide processes on the autohide list when Evanesco starts</string>
          </property>
         </widget>
        </item>

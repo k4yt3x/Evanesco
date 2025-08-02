@@ -45,13 +45,13 @@ MainWindow::MainWindow(QWidget* parent)
     connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshCurrentTable);
 
     // Initialize autohide process watcher
-    m_autohideWatcher = new ProcessWatcher(this);
-    connect(m_autohideWatcher, &ProcessWatcher::processHidden, this, &MainWindow::refreshCurrentTable);
-    // connect(m_autohideWatcher, &ProcessWatcher::processDetected, [](DWORD, const QString&, const QString&) {});
-    connect(m_autohideWatcher, &ProcessWatcher::errorOccurred, this, [&](QString errorMessage) {
+    m_autohideWatcher = new Autohider(this);
+    connect(m_autohideWatcher, &Autohider::processHidden, this, &MainWindow::refreshCurrentTable);
+    // connect(m_autohideWatcher, &Autohider::processDetected, [](DWORD, const QString&, const QString&) {});
+    connect(m_autohideWatcher, &Autohider::errorOccurred, this, [&](QString errorMessage) {
         QMessageBox::warning(this, "Autohide Error", QString("Autohide encountered an error:\n%1").arg(errorMessage));
     });
-    connect(m_autohideWatcher, &ProcessWatcher::notificationRequested, this, &MainWindow::showNotification);
+    connect(m_autohideWatcher, &Autohider::notificationRequested, this, &MainWindow::showNotification);
 
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
@@ -78,7 +78,7 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
 
-    connect(settings, &Settings::autohideListChanged, m_autohideWatcher, &ProcessWatcher::setList);
+    connect(settings, &Settings::autohideListChanged, m_autohideWatcher, &Autohider::setList);
 
     // Connect auto refresh changed signal to update menu action
     connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
@@ -125,6 +125,11 @@ MainWindow::MainWindow(QWidget* parent)
         m_autohideWatcher->start();
     }
     m_autohideWatcher->setList(settings->autohideList());
+
+    // Hide existing processes on startup if enabled
+    if (settings->autohideEnabled() && settings->hideAutohideProcessesOnStart()) {
+        m_autohideWatcher->hideExistingProcesses();
+    }
 
     // Initial table population
     refreshCurrentTable();

@@ -65,6 +65,7 @@ void PrefDialog::loadSettings() {
     ui->hideTargetTaskbarIconsCheckBox->setChecked(settings->hideTargetTaskbarIcons());
     ui->enableAutohideCheckBox->setChecked(settings->autohideEnabled());
     ui->autohideNotifyCheckBox->setChecked(settings->autohideNotify());
+    ui->hideAutohideProcessesOnStartCheckBox->setChecked(settings->hideAutohideProcessesOnStart());
     ui->autohideAddPushButton->setEnabled(!ui->autohideFileNameLineEdit->text().trimmed().isEmpty());
     updateAutohideList();
 
@@ -88,6 +89,7 @@ void PrefDialog::saveSettings() {
     settings->setHideTargetTaskbarIcons(ui->hideTargetTaskbarIconsCheckBox->isChecked());
     settings->setAutohideEnabled(ui->enableAutohideCheckBox->isChecked());
     settings->setAutohideNotify(ui->autohideNotifyCheckBox->isChecked());
+    settings->setHideAutohideProcessesOnStart(ui->hideAutohideProcessesOnStartCheckBox->isChecked());
     settings->setAutohideList(getAllAutohideEntries());
 
     // Force write to disk
