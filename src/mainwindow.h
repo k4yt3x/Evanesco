@@ -79,6 +79,7 @@ class MainWindow : public QMainWindow {
     void onHideFromScreenCaptureChanged(bool enabled);
     void onRandomizeWindowTitlesChanged(bool enabled);
     void onRandomizeTrayIconChanged(bool enabled);
+    void onEnableTrayIconChanged(bool enabled);
     void onMinimizeToTrayChanged(bool enabled);
     void onHideTaskbarIconChanged(bool enabled);
     void showNotification(const QString& title, const QString& message);

@@ -68,6 +68,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
     connect(settings, &Settings::randomizeTrayIconChanged, this, &MainWindow::onRandomizeTrayIconChanged);
+    connect(settings, &Settings::enableTrayIconChanged, this, &MainWindow::onEnableTrayIconChanged);
     connect(settings, &Settings::minimizeToTrayChanged, this, &MainWindow::onMinimizeToTrayChanged);
     connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
     connect(settings, &Settings::autohideEnabledChanged, [this](bool enabled) {
@@ -134,9 +135,8 @@ MainWindow::MainWindow(QWidget* parent)
     // Initial table population
     refreshCurrentTable();
 
-    // Initialize minimize to tray setting
-    // Creates tray icon if enabled
-    onMinimizeToTrayChanged(settings->minimizeToTray());
+    // Initialize tray icon settings (order matters: enableTrayIcon first, then minimizeToTray)
+    onEnableTrayIconChanged(settings->enableTrayIcon());
 }
 
 MainWindow::~MainWindow() {
@@ -162,7 +162,7 @@ void MainWindow::changeEvent(QEvent* event) {
     QMainWindow::changeEvent(event);
     if (event->type() == QEvent::WindowStateChange) {
         if (isMinimized() && m_trayIcon && m_trayIcon->isVisible() && !m_isClosing &&
-            Settings::instance()->minimizeToTray()) {
+            Settings::instance()->enableTrayIcon() && Settings::instance()->minimizeToTray()) {
             // Hide to system tray when minimized (but not when closing)
             hide();
             if (m_trayIcon->supportsMessages() && !m_trayIconHintShown) {
@@ -223,21 +223,21 @@ void MainWindow::onRandomizeWindowTitlesChanged(bool enabled) {
     if (enabled) {
         this->setWindowTitle(RandUtils::generateRandomTitle());
         // Update tray icon tooltip when window title randomization changes
-        if (m_trayIcon) {
+        if (m_trayIcon && Settings::instance()->enableTrayIcon()) {
             m_trayIcon->setToolTip(RandUtils::generateRandomTitle());
         }
     } else {
         this->setWindowTitle(originalMainWindowTitle);
         // Restore original tray icon tooltip
-        if (m_trayIcon) {
+        if (m_trayIcon && Settings::instance()->enableTrayIcon()) {
             m_trayIcon->setToolTip("Evanesco");
         }
     }
 }
 
 void MainWindow::onRandomizeTrayIconChanged(bool enabled) {
-    // Only update if tray icon exists and minimize to tray is enabled
-    if (m_trayIcon && Settings::instance()->minimizeToTray()) {
+    // Only update if tray icon exists and tray icon is enabled
+    if (m_trayIcon && Settings::instance()->enableTrayIcon()) {
         if (enabled) {
             m_trayIcon->setIcon(RandUtils::generateRandomIcon());
         } else {
@@ -251,7 +251,7 @@ void MainWindow::onRandomizeTrayIconChanged(bool enabled) {
     }
 }
 
-void MainWindow::onMinimizeToTrayChanged(bool enabled) {
+void MainWindow::onEnableTrayIconChanged(bool enabled) {
     if (enabled) {
         // Create tray icon if it doesn't exist and system supports it
         if (!m_trayIcon && QSystemTrayIcon::isSystemTrayAvailable()) {
@@ -273,6 +273,14 @@ void MainWindow::onMinimizeToTrayChanged(bool enabled) {
             m_quitAction = nullptr;
         }
     }
+
+    // Also initialize minimize to tray setting after tray icon state is set
+    onMinimizeToTrayChanged(Settings::instance()->minimizeToTray());
+}
+
+void MainWindow::onMinimizeToTrayChanged(bool enabled) {
+    // This setting only controls minimize behavior, not tray icon existence
+    // The actual minimize-to-tray logic is handled in changeEvent()
 }
 
 void MainWindow::onHideTaskbarIconChanged(bool enabled) {
@@ -305,8 +313,8 @@ void MainWindow::iconActivated(QSystemTrayIcon::ActivationReason reason) {
 }
 
 void MainWindow::createTrayIcon() {
-    // Only create system tray icon if system supports it and minimize to tray is enabled
-    if (!QSystemTrayIcon::isSystemTrayAvailable() || !Settings::instance()->minimizeToTray()) {
+    // Only create system tray icon if system supports it and tray icon is enabled
+    if (!QSystemTrayIcon::isSystemTrayAvailable() || !Settings::instance()->enableTrayIcon()) {
         return;
     }
 
@@ -340,7 +348,7 @@ void MainWindow::createTrayIcon() {
 }
 
 void MainWindow::showNotification(const QString& title, const QString& message) {
-    if (m_trayIcon && QSystemTrayIcon::isSystemTrayAvailable()) {
+    if (m_trayIcon && QSystemTrayIcon::isSystemTrayAvailable() && Settings::instance()->enableTrayIcon()) {
         QString displayTitle = Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : title;
         m_trayIcon->showMessage(displayTitle, message, m_trayIcon->icon(), 3000);
     }

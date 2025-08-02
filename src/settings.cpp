@@ -75,6 +75,17 @@ void Settings::setRandomizeTrayIcon(bool enabled) {
     }
 }
 
+bool Settings::enableTrayIcon() const {
+    return m_settings->value("general/enableTrayIcon", kDefaultEnableTrayIcon).toBool();
+}
+
+void Settings::setEnableTrayIcon(bool enabled) {
+    if (enableTrayIcon() != enabled) {
+        m_settings->setValue("general/enableTrayIcon", enabled);
+        emit enableTrayIconChanged(enabled);
+    }
+}
+
 bool Settings::minimizeToTray() const {
     return m_settings->value("general/minimizeToTray", kDefaultMinimizeToTray).toBool();
 }
@@ -184,6 +195,7 @@ void Settings::resetToDefaults() {
     setHideFromScreenCapture(kDefaultHideFromScreenCapture);
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
     setRandomizeTrayIcon(kDefaultRandomizeTrayIcon);
+    setEnableTrayIcon(kDefaultEnableTrayIcon);
     setMinimizeToTray(kDefaultMinimizeToTray);
     setMaxWindowCreationWaitMs(kDefaultMaxWindowCreationWaitMs);
     setHideTaskbarIcon(kDefaultHideTaskbarIcon);

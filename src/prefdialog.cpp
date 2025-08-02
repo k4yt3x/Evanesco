@@ -58,6 +58,7 @@ void PrefDialog::loadSettings() {
     ui->hideFromScreenCaptureCheckBox->setChecked(settings->hideFromScreenCapture());
     ui->randomizeWindowTitlesCheckBox->setChecked(settings->randomizeWindowTitles());
     ui->randomizeTrayIconCheckBox->setChecked(settings->randomizeTrayIcon());
+    ui->enableTrayIconCheckBox->setChecked(settings->enableTrayIcon());
     ui->minimizeToTrayCheckBox->setChecked(settings->minimizeToTray());
     ui->maxWindowCreationWaitMsSpinBox->setValue(settings->maxWindowCreationWaitMs());
     ui->hideTaskbarIconCheckBox->setChecked(settings->hideTaskbarIcon());
@@ -73,6 +74,10 @@ void PrefDialog::loadSettings() {
     connect(
         ui->autoRefreshCheckBox, &QCheckBox::toggled, ui->autoRefreshIntervalDoubleSpinBox, &QDoubleSpinBox::setEnabled
     );
+
+    // Connect enable tray icon checkbox to enable/disable minimize to tray checkbox
+    connect(ui->enableTrayIconCheckBox, &QCheckBox::toggled, ui->minimizeToTrayCheckBox, &QCheckBox::setEnabled);
+    ui->minimizeToTrayCheckBox->setEnabled(ui->enableTrayIconCheckBox->isChecked());
 }
 
 void PrefDialog::saveSettings() {
@@ -82,6 +87,7 @@ void PrefDialog::saveSettings() {
     settings->setHideFromScreenCapture(ui->hideFromScreenCaptureCheckBox->isChecked());
     settings->setRandomizeWindowTitles(ui->randomizeWindowTitlesCheckBox->isChecked());
     settings->setRandomizeTrayIcon(ui->randomizeTrayIconCheckBox->isChecked());
+    settings->setEnableTrayIcon(ui->enableTrayIconCheckBox->isChecked());
     settings->setMinimizeToTray(ui->minimizeToTrayCheckBox->isChecked());
     settings->setMaxWindowCreationWaitMs(ui->maxWindowCreationWaitMsSpinBox->value());
     settings->setHideTaskbarIcon(ui->hideTaskbarIconCheckBox->isChecked());

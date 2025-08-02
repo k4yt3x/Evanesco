@@ -80,6 +80,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="enableTrayIconCheckBox">
+         <property name="text">
+          <string>Enable tray icon (required for notifications)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="minimizeToTrayCheckBox">
          <property name="text">
           <string>Minimize to tray icon</string>
