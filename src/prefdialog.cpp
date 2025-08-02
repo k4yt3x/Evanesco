@@ -2,6 +2,8 @@
 #include "ui_prefdialog.h"
 
 #include <QApplication>
+#include <QFileDialog>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 
@@ -21,6 +23,18 @@ PrefDialog::PrefDialog(QWidget* parent) : QDialog(parent), ui(new Ui::PrefDialog
 
     // Connect reset button
     connect(ui->resetPushButton, &QPushButton::clicked, this, &PrefDialog::resetToDefaults);
+
+    // Connect autohide tab signals
+    connect(ui->autohideAddPushButton, &QPushButton::clicked, this, &PrefDialog::onAutohideAddClicked);
+    connect(ui->autohideRemovePushButton, &QPushButton::clicked, this, &PrefDialog::onAutohideRemoveClicked);
+    connect(ui->autohideSelectFilePushButton, &QPushButton::clicked, this, &PrefDialog::onAutohideSelectFileClicked);
+    connect(ui->autohideListWidget, &QListWidget::itemChanged, this, &PrefDialog::onAutohideItemChanged);
+    connect(ui->autohideListWidget, &QListWidget::currentRowChanged, this, [this](int currentRow) {
+        ui->autohideRemovePushButton->setEnabled(currentRow >= 0);
+    });
+    connect(ui->autohideFileNameLineEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
+        ui->autohideAddPushButton->setEnabled(!text.trimmed().isEmpty());
+    });
 
     // Load current settings into UI
     loadSettings();
@@ -43,9 +57,16 @@ void PrefDialog::loadSettings() {
     ui->autoRefreshIntervalDoubleSpinBox->setEnabled(settings->autoRefresh());
     ui->hideFromScreenCaptureCheckBox->setChecked(settings->hideFromScreenCapture());
     ui->randomizeWindowTitlesCheckBox->setChecked(settings->randomizeWindowTitles());
+    ui->randomizeTrayIconCheckBox->setChecked(settings->randomizeTrayIcon());
+    ui->minimizeToTrayCheckBox->setChecked(settings->minimizeToTray());
+    ui->maxWindowCreationWaitMsSpinBox->setValue(settings->maxWindowCreationWaitMs());
     ui->hideTaskbarIconCheckBox->setChecked(settings->hideTaskbarIcon());
     ui->randomizeDllFileNameCheckBox->setChecked(settings->randomizeDllFileName());
     ui->hideTargetTaskbarIconsCheckBox->setChecked(settings->hideTargetTaskbarIcons());
+    ui->enableAutohideCheckBox->setChecked(settings->autohideEnabled());
+    ui->autohideNotifyCheckBox->setChecked(settings->autohideNotify());
+    ui->autohideAddPushButton->setEnabled(!ui->autohideFileNameLineEdit->text().trimmed().isEmpty());
+    updateAutohideList();
 
     // Connect the auto refresh checkbox to enable/disable interval spinbox
     connect(
@@ -59,9 +80,15 @@ void PrefDialog::saveSettings() {
     settings->setRefreshInterval(ui->autoRefreshIntervalDoubleSpinBox->value());
     settings->setHideFromScreenCapture(ui->hideFromScreenCaptureCheckBox->isChecked());
     settings->setRandomizeWindowTitles(ui->randomizeWindowTitlesCheckBox->isChecked());
+    settings->setRandomizeTrayIcon(ui->randomizeTrayIconCheckBox->isChecked());
+    settings->setMinimizeToTray(ui->minimizeToTrayCheckBox->isChecked());
+    settings->setMaxWindowCreationWaitMs(ui->maxWindowCreationWaitMsSpinBox->value());
     settings->setHideTaskbarIcon(ui->hideTaskbarIconCheckBox->isChecked());
     settings->setRandomizeDllFileName(ui->randomizeDllFileNameCheckBox->isChecked());
     settings->setHideTargetTaskbarIcons(ui->hideTargetTaskbarIconsCheckBox->isChecked());
+    settings->setAutohideEnabled(ui->enableAutohideCheckBox->isChecked());
+    settings->setAutohideNotify(ui->autohideNotifyCheckBox->isChecked());
+    settings->setAutohideList(getAllAutohideEntries());
 
     // Force write to disk
     settings->sync();
@@ -106,4 +133,138 @@ void PrefDialog::showEvent(QShowEvent* event) {
     if (settings->randomizeWindowTitles()) {
         this->setWindowTitle(RandUtils::generateRandomTitle());
     }
+}
+
+void PrefDialog::updateAutohideList() {
+    ui->autohideListWidget->clear();
+
+    QStringList entries = settings->autohideList();
+    for (const QString& entry : entries) {
+        addAutohideEntry(entry);
+    }
+
+    // Update remove button state
+    ui->autohideRemovePushButton->setEnabled(ui->autohideListWidget->currentRow() >= 0);
+}
+
+void PrefDialog::addAutohideEntry(const QString& entry) {
+    QListWidgetItem* item = new QListWidgetItem(entry);
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
+    ui->autohideListWidget->addItem(item);
+}
+
+QStringList PrefDialog::getAllAutohideEntries() const {
+    QStringList entries;
+    for (int i = 0; i < ui->autohideListWidget->count(); ++i) {
+        QListWidgetItem* item = ui->autohideListWidget->item(i);
+        if (item) {
+            QString text = item->text().trimmed();
+            if (!text.isEmpty()) {
+                entries.append(text);
+            }
+        }
+    }
+    return entries;
+}
+
+void PrefDialog::onAutohideAddClicked() {
+    QString entry = ui->autohideFileNameLineEdit->text().trimmed();
+
+    if (entry.isEmpty()) {
+        QMessageBox::warning(this, "Empty Entry", "Please enter a filename or path, or use the Select File button.");
+        return;
+    }
+
+    // Check if entry already exists
+    QStringList allEntries = settings->autohideList();
+
+    if (allEntries.contains(entry, Qt::CaseInsensitive)) {
+        QMessageBox::information(
+            this, "Duplicate Entry", QString("The entry '%1' already exists in the list.").arg(entry)
+        );
+        return;
+    }
+
+    // Add to settings
+    allEntries.append(entry);
+    settings->setAutohideList(allEntries);
+
+    // Update the display
+    updateAutohideList();
+
+    // Clear the line edit
+    ui->autohideFileNameLineEdit->clear();
+
+    // Select the new item
+    for (int i = 0; i < ui->autohideListWidget->count(); ++i) {
+        if (ui->autohideListWidget->item(i)->text() == entry) {
+            ui->autohideListWidget->setCurrentRow(i);
+            break;
+        }
+    }
+}
+
+void PrefDialog::onAutohideSelectFileClicked() {
+    QString filePath =
+        QFileDialog::getOpenFileName(this, "Select Executable File", "", "Executable Files (*.exe);;All Files (*.*)");
+
+    if (!filePath.isEmpty()) {
+        ui->autohideFileNameLineEdit->setText(filePath);
+    }
+}
+
+void PrefDialog::onAutohideRemoveClicked() {
+    int currentRow = ui->autohideListWidget->currentRow();
+    if (currentRow < 0) {
+        return;
+    }
+
+    QListWidgetItem* item = ui->autohideListWidget->item(currentRow);
+    if (!item) {
+        return;
+    }
+
+    QString entryToRemove = item->text();
+
+    // Remove from settings
+    QStringList allEntries = settings->autohideList();
+    allEntries.removeAll(entryToRemove);
+    settings->setAutohideList(allEntries);
+
+    // Update the display
+    updateAutohideList();
+}
+
+void PrefDialog::onAutohideItemChanged(QListWidgetItem* item) {
+    if (!item) {
+        return;
+    }
+
+    QString newText = item->text().trimmed();
+
+    // Validate the new text
+    if (newText.isEmpty()) {
+        QMessageBox::warning(this, "Invalid Entry", "Entry cannot be empty.");
+        return;
+    }
+
+    // Check for duplicates
+    QStringList currentEntries = getAllAutohideEntries();
+    int duplicateCount = 0;
+    for (const QString& entry : currentEntries) {
+        if (entry.compare(newText, Qt::CaseInsensitive) == 0) {
+            duplicateCount++;
+        }
+    }
+
+    if (duplicateCount > 1) {
+        QMessageBox::warning(
+            this, "Duplicate Entry", QString("The entry '%1' already exists in the list.").arg(newText)
+        );
+        updateAutohideList();
+        return;
+    }
+
+    // Update settings with current list
+    settings->setAutohideList(currentEntries);
 }

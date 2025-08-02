@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <QDialog>
+#include <QListWidgetItem>
 #include <QShowEvent>
 
 namespace Ui {
@@ -26,6 +27,12 @@ class PrefDialog : public QDialog {
     void onApplyClicked();
     void onCancelClicked();
 
+    // Autohide tab slots
+    void onAutohideAddClicked();
+    void onAutohideRemoveClicked();
+    void onAutohideSelectFileClicked();
+    void onAutohideItemChanged(QListWidgetItem* item);
+
    private:
     Ui::PrefDialog* ui;
     Settings* settings;
@@ -33,4 +40,9 @@ class PrefDialog : public QDialog {
     void loadSettings();
     void saveSettings();
     void resetToDefaults();
+
+    // Autohide helper methods
+    void updateAutohideList();
+    void addAutohideEntry(const QString& entry);
+    QStringList getAllAutohideEntries() const;
 };

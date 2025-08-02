@@ -64,6 +64,28 @@ void Settings::setRandomizeWindowTitles(bool enabled) {
     }
 }
 
+bool Settings::randomizeTrayIcon() const {
+    return m_settings->value("general/randomizeTrayIcon", kDefaultRandomizeTrayIcon).toBool();
+}
+
+void Settings::setRandomizeTrayIcon(bool enabled) {
+    if (randomizeTrayIcon() != enabled) {
+        m_settings->setValue("general/randomizeTrayIcon", enabled);
+        emit randomizeTrayIconChanged(enabled);
+    }
+}
+
+bool Settings::minimizeToTray() const {
+    return m_settings->value("general/minimizeToTray", kDefaultMinimizeToTray).toBool();
+}
+
+void Settings::setMinimizeToTray(bool enabled) {
+    if (minimizeToTray() != enabled) {
+        m_settings->setValue("general/minimizeToTray", enabled);
+        emit minimizeToTrayChanged(enabled);
+    }
+}
+
 void Settings::sync() {
     m_settings->sync();
 }
@@ -101,13 +123,63 @@ void Settings::setHideTargetTaskbarIcons(bool enabled) {
     }
 }
 
+bool Settings::autohideEnabled() const {
+    return m_settings->value("autohide/enabled", kDefaultAutohideEnabled).toBool();
+}
+
+void Settings::setAutohideEnabled(bool enabled) {
+    if (autohideEnabled() != enabled) {
+        m_settings->setValue("autohide/enabled", enabled);
+        emit autohideEnabledChanged(enabled);
+    }
+}
+
+bool Settings::autohideNotify() const {
+    return m_settings->value("autohide/notify", kDefaultAutohideNotify).toBool();
+}
+
+void Settings::setAutohideNotify(bool enabled) {
+    if (autohideNotify() != enabled) {
+        m_settings->setValue("autohide/notify", enabled);
+        emit autohideNotifyChanged(enabled);
+    }
+}
+
+int Settings::maxWindowCreationWaitMs() const {
+    return m_settings->value("autohide/maxWindowCreationWaitMs", kDefaultMaxWindowCreationWaitMs).toInt();
+}
+
+void Settings::setMaxWindowCreationWaitMs(int waitMs) {
+    if (maxWindowCreationWaitMs() != waitMs) {
+        m_settings->setValue("autohide/maxWindowCreationWaitMs", waitMs);
+        emit maxWindowCreationWaitMsChanged(waitMs);
+    }
+}
+
+QStringList Settings::autohideList() const {
+    return m_settings->value("autohide/autohideList", QStringList()).toStringList();
+}
+
+void Settings::setAutohideList(const QStringList& list) {
+    if (autohideList() != list) {
+        m_settings->setValue("autohide/autohideList", list);
+        emit autohideListChanged(list);
+    }
+}
+
 void Settings::resetToDefaults() {
     setAutoRefresh(kDefaultAutoRefresh);
     setRefreshInterval(kDefaultRefreshInterval);
     setHideFromScreenCapture(kDefaultHideFromScreenCapture);
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
+    setRandomizeTrayIcon(kDefaultRandomizeTrayIcon);
+    setMinimizeToTray(kDefaultMinimizeToTray);
+    setMaxWindowCreationWaitMs(kDefaultMaxWindowCreationWaitMs);
     setHideTaskbarIcon(kDefaultHideTaskbarIcon);
     setRandomizeDllFileName(kDefaultRandomizeDllFileName);
     setHideTargetTaskbarIcons(kDefaultHideTargetTaskbarIcons);
+    setAutohideEnabled(kDefaultAutohideEnabled);
+    setAutohideNotify(kDefaultAutohideNotify);
+    setAutohideList(QStringList());
     sync();
 }

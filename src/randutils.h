@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QIcon>
 #include <QString>
 #include <string>
 
@@ -10,6 +11,9 @@ class RandUtils {
 
     // Random filename generation
     static std::string generateRandomFilename(const std::string& extension = ".dll");
+
+    // Random icon generation
+    static QIcon generateRandomIcon();
 
    private:
     static const QString kCharacters;

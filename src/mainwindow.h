@@ -21,10 +21,13 @@
 #include <QPushButton>
 #include <QSet>
 #include <QShowEvent>
+#include <QSystemTrayIcon>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTimer>
+
+#include "processwatcher.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -66,18 +69,33 @@ class MainWindow : public QMainWindow {
 
    protected:
     void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+    void changeEvent(QEvent* event) override;
+    void setVisible(bool visible) override;
 
    private slots:
     void onAutomaticRefreshToggled(bool enabled);
     void onRefreshIntervalChanged(double value);
     void onHideFromScreenCaptureChanged(bool enabled);
     void onRandomizeWindowTitlesChanged(bool enabled);
+    void onRandomizeTrayIconChanged(bool enabled);
+    void onMinimizeToTrayChanged(bool enabled);
     void onHideTaskbarIconChanged(bool enabled);
-    void onHideTargetTaskbarIconsChanged(bool enabled);
+    void showNotification(const QString& title, const QString& message);
+    void iconActivated(QSystemTrayIcon::ActivationReason reason);
 
    private:
     Ui::MainWindow* ui;
     QTimer* refreshTimer;
+    ProcessWatcher* m_autohideWatcher;
+
+    // System tray icon
+    QSystemTrayIcon* m_trayIcon;
+    QMenu* m_trayIconMenu;
+    QAction* m_restoreAction;
+    QAction* m_quitAction;
+    bool m_isClosing;
+    bool m_trayIconHintShown;
 
     // Cached data for filtering
     QList<WindowInfo> allWindows;
@@ -106,6 +124,8 @@ class MainWindow : public QMainWindow {
     void setupKeyboardShortcuts();
     void setupTooltips();
     void setupRefreshIntervalSpinBox();
+    void setupSystemTrayIcon();
+    void createTrayIcon();
 
     // Table setup methods
     void setupWindowsTable();

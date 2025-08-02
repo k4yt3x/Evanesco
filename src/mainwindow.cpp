@@ -1,6 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QApplication>
+#include <QCloseEvent>
+#include <QMenu>
+
 #include "aboutdialog.h"
 #include "prefdialog.h"
 #include "procutils.h"
@@ -11,7 +15,15 @@
 // Define the constant for hidden window background color
 const QColor MainWindow::kHiddenWindowBackgroundColor(128, 0, 128, 100);
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent),
+      ui(new Ui::MainWindow),
+      m_trayIcon(nullptr),
+      m_trayIconMenu(nullptr),
+      m_restoreAction(nullptr),
+      m_quitAction(nullptr),
+      m_isClosing(false),
+      m_trayIconHintShown(false) {
     ui->setupUi(this);
 
     QString title = "Evanesco " + kVersion;
@@ -32,6 +44,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     refreshTimer->setSingleShot(false);
     connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshCurrentTable);
 
+    // Initialize autohide process watcher
+    m_autohideWatcher = new ProcessWatcher(this);
+    connect(m_autohideWatcher, &ProcessWatcher::processHidden, this, &MainWindow::refreshCurrentTable);
+    // connect(m_autohideWatcher, &ProcessWatcher::processDetected, [](DWORD, const QString&, const QString&) {});
+    connect(m_autohideWatcher, &ProcessWatcher::errorOccurred, this, [&](QString errorMessage) {
+        QMessageBox::warning(this, "Autohide Error", QString("Autohide encountered an error:\n%1").arg(errorMessage));
+    });
+    connect(m_autohideWatcher, &ProcessWatcher::notificationRequested, this, &MainWindow::showNotification);
+
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
     connect(ui->actionRefreshCurrentTable, &QAction::triggered, this, &MainWindow::refreshCurrentTable);
@@ -46,8 +67,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(settings, &Settings::refreshIntervalChanged, this, &MainWindow::onRefreshIntervalChanged);
     connect(settings, &Settings::hideFromScreenCaptureChanged, this, &MainWindow::onHideFromScreenCaptureChanged);
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
+    connect(settings, &Settings::randomizeTrayIconChanged, this, &MainWindow::onRandomizeTrayIconChanged);
+    connect(settings, &Settings::minimizeToTrayChanged, this, &MainWindow::onMinimizeToTrayChanged);
     connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
-    connect(settings, &Settings::hideTargetTaskbarIconsChanged, this, &MainWindow::onHideTargetTaskbarIconsChanged);
+    connect(settings, &Settings::autohideEnabledChanged, [this](bool enabled) {
+        if (enabled) {
+            m_autohideWatcher->start();
+        } else {
+            m_autohideWatcher->stop();
+        }
+    });
+
+    connect(settings, &Settings::autohideListChanged, m_autohideWatcher, &ProcessWatcher::setList);
 
     // Connect auto refresh changed signal to update menu action
     connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
@@ -89,12 +120,61 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Initialize taskbar icon hiding
     onHideTaskbarIconChanged(settings->hideTaskbarIcon());
 
+    // Initialize autohide based on settings
+    if (settings->autohideEnabled()) {
+        m_autohideWatcher->start();
+    }
+    m_autohideWatcher->setList(settings->autohideList());
+
     // Initial table population
     refreshCurrentTable();
+
+    // Initialize minimize to tray setting
+    // Creates tray icon if enabled
+    onMinimizeToTrayChanged(settings->minimizeToTray());
 }
 
 MainWindow::~MainWindow() {
+    if (m_autohideWatcher) {
+        m_autohideWatcher->stop();
+    }
     delete ui;
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    // Set flag to prevent minimize-to-tray behavior
+    m_isClosing = true;
+
+    // Ensure the application actually closes when X button is clicked
+    event->accept();
+    if (m_trayIcon) {
+        m_trayIcon->hide();
+    }
+    qApp->quit();
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange) {
+        if (isMinimized() && m_trayIcon && m_trayIcon->isVisible() && !m_isClosing &&
+            Settings::instance()->minimizeToTray()) {
+            // Hide to system tray when minimized (but not when closing)
+            hide();
+            if (m_trayIcon->supportsMessages() && !m_trayIconHintShown) {
+                QString title =
+                    Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : "Evanesco";
+                m_trayIcon->showMessage(title, "Application minimized to tray", QSystemTrayIcon::Information, 2000);
+                m_trayIconHintShown = true;
+            }
+        }
+    }
+}
+
+void MainWindow::setVisible(bool visible) {
+    if (m_restoreAction) {
+        m_restoreAction->setEnabled(!visible);
+    }
+    QMainWindow::setVisible(visible);
 }
 
 void MainWindow::onAutomaticRefreshToggled(bool enabled) {
@@ -137,8 +217,56 @@ void MainWindow::showEvent(QShowEvent* event) {
 void MainWindow::onRandomizeWindowTitlesChanged(bool enabled) {
     if (enabled) {
         this->setWindowTitle(RandUtils::generateRandomTitle());
+        // Update tray icon tooltip when window title randomization changes
+        if (m_trayIcon) {
+            m_trayIcon->setToolTip(RandUtils::generateRandomTitle());
+        }
     } else {
         this->setWindowTitle(originalMainWindowTitle);
+        // Restore original tray icon tooltip
+        if (m_trayIcon) {
+            m_trayIcon->setToolTip("Evanesco");
+        }
+    }
+}
+
+void MainWindow::onRandomizeTrayIconChanged(bool enabled) {
+    // Only update if tray icon exists and minimize to tray is enabled
+    if (m_trayIcon && Settings::instance()->minimizeToTray()) {
+        if (enabled) {
+            m_trayIcon->setIcon(RandUtils::generateRandomIcon());
+        } else {
+            // Restore original icon
+            QIcon originalIcon = QIcon(":/resources/evanesco.ico");
+            if (originalIcon.isNull()) {
+                originalIcon = style()->standardIcon(QStyle::SP_ComputerIcon);
+            }
+            m_trayIcon->setIcon(originalIcon);
+        }
+    }
+}
+
+void MainWindow::onMinimizeToTrayChanged(bool enabled) {
+    if (enabled) {
+        // Create tray icon if it doesn't exist and system supports it
+        if (!m_trayIcon && QSystemTrayIcon::isSystemTrayAvailable()) {
+            createTrayIcon();
+            // Apply current tray icon randomization setting
+            onRandomizeTrayIconChanged(Settings::instance()->randomizeTrayIcon());
+        }
+    } else {
+        // Destroy tray icon if it exists
+        if (m_trayIcon) {
+            m_trayIcon->hide();
+            delete m_trayIcon;
+            m_trayIcon = nullptr;
+        }
+        if (m_trayIconMenu) {
+            delete m_trayIconMenu;
+            m_trayIconMenu = nullptr;
+            m_restoreAction = nullptr;
+            m_quitAction = nullptr;
+        }
     }
 }
 
@@ -154,9 +282,63 @@ void MainWindow::onHideTaskbarIconChanged(bool enabled) {
     this->show();
 }
 
-void MainWindow::onHideTargetTaskbarIconsChanged(bool enabled) {
-    // This setting affects future window operations
-    // No immediate UI changes needed as it's applied during injection
+void MainWindow::iconActivated(QSystemTrayIcon::ActivationReason reason) {
+    switch (reason) {
+        case QSystemTrayIcon::Trigger:
+        case QSystemTrayIcon::DoubleClick:
+            if (isVisible() && !isMinimized()) {
+                hide();
+            } else {
+                showNormal();
+                raise();
+                activateWindow();
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void MainWindow::createTrayIcon() {
+    // Only create system tray icon if system supports it and minimize to tray is enabled
+    if (!QSystemTrayIcon::isSystemTrayAvailable() || !Settings::instance()->minimizeToTray()) {
+        return;
+    }
+
+    m_trayIconMenu = new QMenu(this);
+    m_restoreAction = m_trayIconMenu->addAction(tr("&Restore"), this, &QWidget::showNormal);
+    m_trayIconMenu->addSeparator();
+    m_quitAction = m_trayIconMenu->addAction(tr("&Quit"), qApp, &QCoreApplication::quit);
+
+    m_trayIcon = new QSystemTrayIcon(this);
+
+    // Set icon based on tray icon randomization setting
+    QIcon icon;
+    if (Settings::instance()->randomizeTrayIcon()) {
+        icon = RandUtils::generateRandomIcon();
+    } else {
+        // Try to load custom icon, fallback to system icon if it fails
+        icon = QIcon(":/resources/evanesco.ico");
+        if (icon.isNull()) {
+            icon = style()->standardIcon(QStyle::SP_ComputerIcon);
+        }
+    }
+
+    m_trayIcon->setIcon(icon);
+    QString tooltip = Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : "Evanesco";
+    m_trayIcon->setToolTip(tooltip);
+    m_trayIcon->setContextMenu(m_trayIconMenu);
+
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, &MainWindow::iconActivated);
+
+    m_trayIcon->show();
+}
+
+void MainWindow::showNotification(const QString& title, const QString& message) {
+    if (m_trayIcon && QSystemTrayIcon::isSystemTrayAvailable()) {
+        QString displayTitle = Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : title;
+        m_trayIcon->showMessage(displayTitle, message, m_trayIcon->icon(), 3000);
+    }
 }
 
 void MainWindow::setupWindowsTable() {

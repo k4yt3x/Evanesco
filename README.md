@@ -59,7 +59,7 @@ Evanesco bypasses this restriction by injecting a DLL into the target process th
 ## Roadmap
 
 - [ ] Spy++-like drag-and-drop finder tool
-- [ ] Run as a background process to automatically hide certain windows
+- [ ] Make DLL persistent and automatically hide newly created windows for the target process
 - [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
 - [ ] More covert methods to load the shellcode (e.g., `LdrLoadDll`, manual mapping)
 - [x] Hide Evanesco's own window from screen capture
@@ -67,6 +67,7 @@ Evanesco bypasses this restriction by injecting a DLL into the target process th
 - [x] Randomize the name of the injected DLL
 - [x] Visual indicator for hidden windows in the table
 - [x] Hide the taskbar icon of the target window
+- [x] Run as a background process to automatically hide certain windows
 
 ## License
 

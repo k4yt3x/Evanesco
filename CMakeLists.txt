@@ -29,6 +29,8 @@ qt_add_executable(Evanesco
     src/prefdialog.cpp
     src/prefdialog.h
     src/prefdialog.ui
+    src/processwatcher.cpp
+    src/processwatcher.h
     src/procutils.cpp
     src/procutils.h
     src/randutils.cpp
@@ -42,6 +44,11 @@ qt_add_executable(Evanesco
     src/windowhider.h
 )
 
+qt_add_resources(Evanesco "resources"
+    PREFIX "/"
+    FILES resources/evanesco.ico
+)
+
 target_compile_options(Evanesco PRIVATE
     $<$<CONFIG:Release>:-Os>
 )
@@ -53,6 +60,7 @@ target_link_libraries(Evanesco
     PRIVATE
         Qt::Core
         Qt::Widgets
+        wbemuuid
 )
 
 include(GNUInstallDirs)
