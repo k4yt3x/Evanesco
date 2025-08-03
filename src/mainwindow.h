@@ -135,6 +135,10 @@ class MainWindow : public QMainWindow {
 
     // Window operation methods
     void performWindowOperation(bool hideOperation);
+    void hideAllWindows();
+    void unhideAllWindows();
+    void selectAll();
+    void clearSelection();
     QSet<int> getSelectedRows();
     WindowOperationInfo extractWindowInfo(int row);
     void performSingleWindowOperation(

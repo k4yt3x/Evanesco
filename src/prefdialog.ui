@@ -273,8 +273,17 @@
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
         <widget class="QPushButton" name="resetPushButton">
+         <property name="font">
+          <font>
+           <pointsize>11</pointsize>
+           <bold>false</bold>
+          </font>
+         </property>
          <property name="text">
           <string>Reset all preferences</string>
+         </property>
+         <property name="icon">
+          <iconset theme="QIcon::ThemeIcon::DialogWarning"/>
          </property>
         </widget>
        </item>

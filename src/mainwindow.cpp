@@ -55,7 +55,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Connect signals and slots
     connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
-    connect(ui->actionRefreshCurrentTable, &QAction::triggered, this, &MainWindow::refreshCurrentTable);
     connect(ui->actionAbout, &QAction::triggered, this, [&]() {
         AboutDialog aboutDialog(this, kVersion);
         aboutDialog.exec();
@@ -81,8 +80,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(settings, &Settings::autohideListChanged, m_autohideWatcher, &Autohider::setList);
 
-    // Connect auto refresh changed signal to update menu action
-    connect(settings, &Settings::autoRefreshChanged, ui->actionAutoRefreshTables, &QAction::setChecked);
+    // Connect auto refresh changed signal to update checkbox
+    connect(settings, &Settings::autoRefreshChanged, ui->autoRefreshCheckBox, &QCheckBox::setChecked);
 
     // Connect preferences action
     connect(ui->actionPreferences, &QAction::triggered, this, [this]() {
@@ -90,17 +89,20 @@ MainWindow::MainWindow(QWidget* parent)
         prefDialog.exec();
     });
 
-    // Connect auto refresh menu action
-    connect(ui->actionAutoRefreshTables, &QAction::toggled, this, [this](bool checked) {
+    // Connect auto refresh checkbox
+    connect(ui->autoRefreshCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
         Settings::instance()->setAutoRefresh(checked);
     });
 
-    // Initialize menu action state
-    ui->actionAutoRefreshTables->setChecked(settings->autoRefresh());
-    connect(ui->windowsListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
-    connect(ui->processesListRefreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
+    // Initialize checkbox state
+    ui->autoRefreshCheckBox->setChecked(settings->autoRefresh());
+    connect(ui->refreshPushButton, &QPushButton::clicked, this, &MainWindow::refreshCurrentTable);
     connect(ui->hidePushButton, &QPushButton::clicked, this, [&]() { performWindowOperation(true); });
     connect(ui->unhidePushButton, &QPushButton::clicked, this, [&]() { performWindowOperation(false); });
+    connect(ui->hideAllPushButton, &QPushButton::clicked, this, &MainWindow::hideAllWindows);
+    connect(ui->unhideAllPushButton, &QPushButton::clicked, this, &MainWindow::unhideAllWindows);
+    connect(ui->selectAllPushButton, &QPushButton::clicked, this, &MainWindow::selectAll);
+    connect(ui->clearSelectionPushButton, &QPushButton::clicked, this, &MainWindow::clearSelection);
 
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::refreshCurrentTable);
     connect(ui->windowTitleFilterLineEdit, &QLineEdit::textChanged, this, &MainWindow::applyWindowsFilter);
@@ -415,6 +417,72 @@ void MainWindow::performWindowOperation(bool hideOperation) {
     showOperationResult(hideOperation, successCount, failureCount, failedProcesses, failureReasons);
 }
 
+void MainWindow::hideAllWindows() {
+    QTableWidget* currentTable = getCurrentTable();
+    if (!currentTable) {
+        return;
+    }
+
+    int rowCount = currentTable->rowCount();
+    if (rowCount == 0) {
+        QMessageBox::information(this, "No Windows", "No windows available to hide.");
+        return;
+    }
+
+    int successCount = 0;
+    int failureCount = 0;
+    QStringList failedProcesses;
+    QStringList failureReasons;
+
+    for (int row = 0; row < rowCount; ++row) {
+        performSingleWindowOperation(row, true, successCount, failureCount, failedProcesses, failureReasons);
+    }
+
+    showOperationResult(true, successCount, failureCount, failedProcesses, failureReasons);
+}
+
+void MainWindow::unhideAllWindows() {
+    QTableWidget* currentTable = getCurrentTable();
+    if (!currentTable) {
+        return;
+    }
+
+    int rowCount = currentTable->rowCount();
+    if (rowCount == 0) {
+        QMessageBox::information(this, "No Windows", "No windows available to unhide.");
+        return;
+    }
+
+    int successCount = 0;
+    int failureCount = 0;
+    QStringList failedProcesses;
+    QStringList failureReasons;
+
+    for (int row = 0; row < rowCount; ++row) {
+        performSingleWindowOperation(row, false, successCount, failureCount, failedProcesses, failureReasons);
+    }
+
+    showOperationResult(false, successCount, failureCount, failedProcesses, failureReasons);
+}
+
+void MainWindow::selectAll() {
+    QTableWidget* currentTable = getCurrentTable();
+    if (!currentTable) {
+        return;
+    }
+
+    currentTable->selectAll();
+}
+
+void MainWindow::clearSelection() {
+    QTableWidget* currentTable = getCurrentTable();
+    if (!currentTable) {
+        return;
+    }
+
+    currentTable->clearSelection();
+}
+
 QSet<int> MainWindow::getSelectedRows() {
     QTableWidget* currentTable = getCurrentTable();
     QList<QTableWidgetItem*> selectedItems = currentTable->selectedItems();
@@ -554,7 +622,7 @@ void MainWindow::showOperationResult(
 
         // Add two newlines except for the last item
         if (i < failedProcesses.size() - 1) {
-            failureDetails += "\n\n";
+            failureDetails += "\n";
         }
     }
 

@@ -103,11 +103,22 @@ void PrefDialog::saveSettings() {
 }
 
 void PrefDialog::resetToDefaults() {
-    // Reset to default values using Settings
-    settings->resetToDefaults();
+    // Show confirmation dialog
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Reset Preferences",
+        "Are you sure you want to reset all preferences to their default values?\n\nThis action cannot be undone.",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
 
-    // Update UI to reflect defaults
-    loadSettings();
+    if (reply == QMessageBox::Yes) {
+        // Reset to default values using Settings
+        settings->resetToDefaults();
+
+        // Update UI to reflect defaults
+        loadSettings();
+    }
 }
 
 void PrefDialog::onOkClicked() {

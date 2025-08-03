@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A confirmation dialog when resetting preferences.
 - Indicator in the window title to show if Evanesco is running with administrator privileges.
 - The Autohide feature to automatically hide windows added to a list.
+- The `Hide All`, `Unhide All`, `Select All`, and `Deselect All` buttons.
 - The option to enable system tray icon.
 - The option to hide processes in the autohide list on Evanesco startup.
 - The option to minimize Evanesco to the system tray.
@@ -21,8 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improve `WindowHider` logging clarity.
 - Disable auto refresh by default to prevent selection issues.
+- Improve `WindowHider` logging clarity.
+- Redesign the UI and move the buttons into a dock on the right.
+
+### Removed
+
+- The `View` menu bar entry and the actions under it.
 
 ## [1.2.0] - 2025-07-21
 
