@@ -8,10 +8,11 @@ Hide any window from screen capture on Windows.
 
 This lightweight utility allows you to easily hide any window on your system from screenshots, screen recording, screen sharing, malware, anti-cheat, and other tools. Here are some examples:
 
-- Windows Snipping Tool
 - OBS Studio
+- Snipping Tool (Win+Shift+S)
 - Microsoft Teams
 - Discord
+- Zoom
 - …
 
 In case you're wondering, the name "Evanesco" means "disappear" in Latin. I wanted to use a more descriptive name, but I just couldn't resist using the chant of the [invisibility spell](https://bg3.wiki/wiki/Invisibility_(spell)) from Baldur's Gate 3. While the third-person, singular, present, imperative form "Evanesce" is technically more grammatically correct, I'm leaving it as "Evanesco" as it is more interesting to align with the chant of the spell.
@@ -55,19 +56,6 @@ Windows provides the [`SetWindowDisplayAffinity`](https://learn.microsoft.com/en
 However, there is a security restriction where the `SetWindowDisplayAffinity` function can only be called by the process that owns the window, which means we cannot simply write an application that enumerates all windows and calls `SetWindowDisplayAffinity` to hide the windows. The call originate from the process that owns those windows.
 
 Evanesco bypasses this restriction by injecting a DLL into the target process that owns the window we want to hide. The injected DLL then calls the `SetWindowDisplayAffinity` function from within that process. While the first version of Evanesco (1.0.0) used shellcode injection, later versions switched to DLL injection to provide additional functionalities.
-
-## Roadmap
-
-- [ ] Spy++-like drag-and-drop finder tool
-- [ ] Make DLL persistent and automatically hide newly created windows for the target process
-- [ ] More covert methods to run the shellcode (e.g., thread hijacking, `QueueUserAPC`)
-- [ ] More covert methods to load the shellcode (e.g., `LdrLoadDll`, manual mapping)
-- [x] Hide Evanesco's own window from screen capture
-- [x] Randomize Evanesco's window titles to avoid detection
-- [x] Randomize the name of the injected DLL
-- [x] Visual indicator for hidden windows in the table
-- [x] Hide the taskbar icon of the target window
-- [x] Run as a background process to automatically hide certain windows
 
 ## License
 
