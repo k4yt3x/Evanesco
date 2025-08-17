@@ -69,8 +69,9 @@ MainWindow::MainWindow(QWidget* parent)
     connect(settings, &Settings::randomizeTrayIconChanged, this, &MainWindow::onRandomizeTrayIconChanged);
     connect(settings, &Settings::enableTrayIconChanged, this, &MainWindow::onEnableTrayIconChanged);
     connect(settings, &Settings::minimizeToTrayChanged, this, &MainWindow::onMinimizeToTrayChanged);
+    connect(settings, &Settings::closeToTrayChanged, this, &MainWindow::onCloseToTrayChanged);
     connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
-    connect(settings, &Settings::autohideEnabledChanged, [this](bool enabled) {
+    connect(settings, &Settings::autohideEnabledChanged, this, [&](bool enabled) {
         if (enabled) {
             m_autohideWatcher->start();
         } else {
@@ -84,13 +85,13 @@ MainWindow::MainWindow(QWidget* parent)
     connect(settings, &Settings::autoRefreshChanged, ui->autoRefreshCheckBox, &QCheckBox::setChecked);
 
     // Connect preferences action
-    connect(ui->actionPreferences, &QAction::triggered, this, [this]() {
+    connect(ui->actionPreferences, &QAction::triggered, this, [&]() {
         PrefDialog prefDialog(this);
         prefDialog.exec();
     });
 
     // Connect auto refresh checkbox
-    connect(ui->autoRefreshCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    connect(ui->autoRefreshCheckBox, &QCheckBox::toggled, this, [&](bool checked) {
         Settings::instance()->setAutoRefresh(checked);
     });
 
