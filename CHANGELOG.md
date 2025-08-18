@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The application to minimize to tray on close instead of minimize to adhere to conventions.
+
+### Fixed
+
+- The issue where a notification is incorrectly sent when the application closes.
+
 ## [1.3.0] - 2025-08-02
 
 ### Added

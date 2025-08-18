@@ -22,6 +22,7 @@ MainWindow::MainWindow(QWidget* parent)
       m_trayIconMenu(nullptr),
       m_restoreAction(nullptr),
       m_quitAction(nullptr),
+      m_isQuitting(false),
       m_trayIconHintShown(false) {
     ui->setupUi(this);
 
@@ -52,7 +53,10 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_autohideWatcher, &Autohider::notificationRequested, this, &MainWindow::showNotification);
 
     // Connect signals and slots
-    connect(ui->actionExit, &QAction::triggered, this, &MainWindow::close);
+    connect(ui->actionExit, &QAction::triggered, this, [this]() {
+        m_isQuitting = true;
+        close();
+    });
     connect(ui->actionAbout, &QAction::triggered, this, [&]() {
         AboutDialog aboutDialog(this, kVersion);
         aboutDialog.exec();
@@ -148,7 +152,7 @@ MainWindow::~MainWindow() {
 void MainWindow::closeEvent(QCloseEvent* event) {
     // Check if tray icon is available and if close to tray icon is enabled
     if (m_trayIcon && m_trayIcon->isVisible() && Settings::instance()->enableTrayIcon() &&
-        Settings::instance()->closeToTray()) {
+        Settings::instance()->closeToTray() && !m_isQuitting) {
         // Hide application to tray
         hide();
 
@@ -308,7 +312,10 @@ void MainWindow::createTrayIcon() {
     m_trayIconMenu = new QMenu(this);
     m_restoreAction = m_trayIconMenu->addAction(tr("&Restore"), this, &QWidget::showNormal);
     m_trayIconMenu->addSeparator();
-    m_quitAction = m_trayIconMenu->addAction(tr("&Quit"), qApp, &QCoreApplication::quit);
+    m_quitAction = m_trayIconMenu->addAction(tr("&Quit"), this, [this]() {
+        m_isQuitting = true;
+        close();
+    });
 
     m_trayIcon = new QSystemTrayIcon(this);
 

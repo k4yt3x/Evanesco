@@ -93,6 +93,7 @@ class MainWindow : public QMainWindow {
     QMenu* m_trayIconMenu;
     QAction* m_restoreAction;
     QAction* m_quitAction;
+    bool m_isQuitting;
     bool m_trayIconHintShown;
 
     // Cached data for filtering
