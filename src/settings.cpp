@@ -86,14 +86,14 @@ void Settings::setEnableTrayIcon(bool enabled) {
     }
 }
 
-bool Settings::minimizeToTray() const {
-    return m_settings->value("general/minimizeToTray", kDefaultMinimizeToTray).toBool();
+bool Settings::closeToTray() const {
+    return m_settings->value("general/closeToTray", kDefaultCloseToTray).toBool();
 }
 
-void Settings::setMinimizeToTray(bool enabled) {
-    if (minimizeToTray() != enabled) {
-        m_settings->setValue("general/minimizeToTray", enabled);
-        emit minimizeToTrayChanged(enabled);
+void Settings::setCloseToTray(bool enabled) {
+    if (closeToTray() != enabled) {
+        m_settings->setValue("general/closeToTray", enabled);
+        emit closeToTrayChanged(enabled);
     }
 }
 
@@ -196,7 +196,7 @@ void Settings::resetToDefaults() {
     setRandomizeWindowTitles(kDefaultRandomizeWindowTitles);
     setRandomizeTrayIcon(kDefaultRandomizeTrayIcon);
     setEnableTrayIcon(kDefaultEnableTrayIcon);
-    setMinimizeToTray(kDefaultMinimizeToTray);
+    setCloseToTray(kDefaultCloseToTray);
     setMaxWindowCreationWaitMs(kDefaultMaxWindowCreationWaitMs);
     setHideTaskbarIcon(kDefaultHideTaskbarIcon);
     setRandomizeDllFileName(kDefaultRandomizeDllFileName);

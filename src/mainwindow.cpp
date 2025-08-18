@@ -22,7 +22,6 @@ MainWindow::MainWindow(QWidget* parent)
       m_trayIconMenu(nullptr),
       m_restoreAction(nullptr),
       m_quitAction(nullptr),
-      m_isClosing(false),
       m_trayIconHintShown(false) {
     ui->setupUi(this);
 
@@ -47,7 +46,6 @@ MainWindow::MainWindow(QWidget* parent)
     // Initialize autohide process watcher
     m_autohideWatcher = new Autohider(this);
     connect(m_autohideWatcher, &Autohider::processHidden, this, &MainWindow::refreshCurrentTable);
-    // connect(m_autohideWatcher, &Autohider::processDetected, [](DWORD, const QString&, const QString&) {});
     connect(m_autohideWatcher, &Autohider::errorOccurred, this, [&](QString errorMessage) {
         QMessageBox::warning(this, "Autohide Error", QString("Autohide encountered an error:\n%1").arg(errorMessage));
     });
@@ -68,8 +66,6 @@ MainWindow::MainWindow(QWidget* parent)
     connect(settings, &Settings::randomizeWindowTitlesChanged, this, &MainWindow::onRandomizeWindowTitlesChanged);
     connect(settings, &Settings::randomizeTrayIconChanged, this, &MainWindow::onRandomizeTrayIconChanged);
     connect(settings, &Settings::enableTrayIconChanged, this, &MainWindow::onEnableTrayIconChanged);
-    connect(settings, &Settings::minimizeToTrayChanged, this, &MainWindow::onMinimizeToTrayChanged);
-    connect(settings, &Settings::closeToTrayChanged, this, &MainWindow::onCloseToTrayChanged);
     connect(settings, &Settings::hideTaskbarIconChanged, this, &MainWindow::onHideTaskbarIconChanged);
     connect(settings, &Settings::autohideEnabledChanged, this, [&](bool enabled) {
         if (enabled) {
@@ -138,7 +134,7 @@ MainWindow::MainWindow(QWidget* parent)
     // Initial table population
     refreshCurrentTable();
 
-    // Initialize tray icon settings (order matters: enableTrayIcon first, then minimizeToTray)
+    // Initialize tray icon settings
     onEnableTrayIconChanged(settings->enableTrayIcon());
 }
 
@@ -150,32 +146,28 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    // Set flag to prevent minimize-to-tray behavior
-    m_isClosing = true;
+    // Check if tray icon is available and if close to tray icon is enabled
+    if (m_trayIcon && m_trayIcon->isVisible() && Settings::instance()->enableTrayIcon() &&
+        Settings::instance()->closeToTray()) {
+        // Hide application to tray
+        hide();
 
-    // Ensure the application actually closes when X button is clicked
+        // Send a notification the first time the application is minimized
+        if (m_trayIcon->supportsMessages() && !m_trayIconHintShown) {
+            QString title =
+                Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : "Evanesco";
+            m_trayIcon->showMessage(title, "Application minimized to tray", QSystemTrayIcon::Information, 2000);
+            m_trayIconHintShown = true;
+        }
+        event->ignore();
+        return;
+    }
+
     event->accept();
     if (m_trayIcon) {
         m_trayIcon->hide();
     }
     qApp->quit();
-}
-
-void MainWindow::changeEvent(QEvent* event) {
-    QMainWindow::changeEvent(event);
-    if (event->type() == QEvent::WindowStateChange) {
-        if (isMinimized() && m_trayIcon && m_trayIcon->isVisible() && !m_isClosing &&
-            Settings::instance()->enableTrayIcon() && Settings::instance()->minimizeToTray()) {
-            // Hide to system tray when minimized (but not when closing)
-            hide();
-            if (m_trayIcon->supportsMessages() && !m_trayIconHintShown) {
-                QString title =
-                    Settings::instance()->randomizeWindowTitles() ? RandUtils::generateRandomTitle() : "Evanesco";
-                m_trayIcon->showMessage(title, "Application minimized to tray", QSystemTrayIcon::Information, 2000);
-                m_trayIconHintShown = true;
-            }
-        }
-    }
 }
 
 void MainWindow::setVisible(bool visible) {
@@ -276,14 +268,6 @@ void MainWindow::onEnableTrayIconChanged(bool enabled) {
             m_quitAction = nullptr;
         }
     }
-
-    // Also initialize minimize to tray setting after tray icon state is set
-    onMinimizeToTrayChanged(Settings::instance()->minimizeToTray());
-}
-
-void MainWindow::onMinimizeToTrayChanged(bool enabled) {
-    // This setting only controls minimize behavior, not tray icon existence
-    // The actual minimize-to-tray logic is handled in changeEvent()
 }
 
 void MainWindow::onHideTaskbarIconChanged(bool enabled) {
@@ -336,6 +320,7 @@ void MainWindow::createTrayIcon() {
         // Try to load custom icon, fallback to system icon if it fails
         icon = QIcon(":/resources/evanesco.ico");
         if (icon.isNull()) {
+            qDebug() << "Failed to load tray icon";
             icon = style()->standardIcon(QStyle::SP_ComputerIcon);
         }
     }

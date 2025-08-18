@@ -87,9 +87,9 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="minimizeToTrayCheckBox">
+        <widget class="QCheckBox" name="closeToTrayCheckBox">
          <property name="text">
-          <string>Minimize to tray icon</string>
+          <string>Minimize to system tray on close</string>
          </property>
         </widget>
        </item>

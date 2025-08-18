@@ -29,8 +29,8 @@ class Settings : public QObject {
     bool enableTrayIcon() const;
     void setEnableTrayIcon(bool enabled);
 
-    bool minimizeToTray() const;
-    void setMinimizeToTray(bool enabled);
+    bool closeToTray() const;
+    void setCloseToTray(bool enabled);
 
     bool hideTaskbarIcon() const;
     void setHideTaskbarIcon(bool enabled);
@@ -71,7 +71,7 @@ class Settings : public QObject {
     void randomizeWindowTitlesChanged(bool enabled);
     void randomizeTrayIconChanged(bool enabled);
     void enableTrayIconChanged(bool enabled);
-    void minimizeToTrayChanged(bool enabled);
+    void closeToTrayChanged(bool enabled);
     void maxWindowCreationWaitMsChanged(int waitMs);
     void hideTaskbarIconChanged(bool enabled);
     void randomizeDllFileNameChanged(bool enabled);
@@ -95,7 +95,7 @@ class Settings : public QObject {
     static constexpr bool kDefaultRandomizeWindowTitles = false;
     static constexpr bool kDefaultRandomizeTrayIcon = false;
     static constexpr bool kDefaultEnableTrayIcon = true;
-    static constexpr bool kDefaultMinimizeToTray = false;
+    static constexpr bool kDefaultCloseToTray = true;
     static constexpr int kDefaultMaxWindowCreationWaitMs = 3000;
     static constexpr bool kDefaultHideTaskbarIcon = false;
     static constexpr bool kDefaultRandomizeDllFileName = false;

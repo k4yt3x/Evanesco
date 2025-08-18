@@ -70,7 +70,6 @@ class MainWindow : public QMainWindow {
    protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
-    void changeEvent(QEvent* event) override;
     void setVisible(bool visible) override;
 
    private slots:
@@ -80,7 +79,6 @@ class MainWindow : public QMainWindow {
     void onRandomizeWindowTitlesChanged(bool enabled);
     void onRandomizeTrayIconChanged(bool enabled);
     void onEnableTrayIconChanged(bool enabled);
-    void onMinimizeToTrayChanged(bool enabled);
     void onHideTaskbarIconChanged(bool enabled);
     void showNotification(const QString& title, const QString& message);
     void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -95,7 +93,6 @@ class MainWindow : public QMainWindow {
     QMenu* m_trayIconMenu;
     QAction* m_restoreAction;
     QAction* m_quitAction;
-    bool m_isClosing;
     bool m_trayIconHintShown;
 
     // Cached data for filtering
@@ -209,4 +206,4 @@ class MainWindow : public QMainWindow {
     static const QColor kHiddenWindowBackgroundColor;
 };
 
-const QString kVersion = "1.3.0";
+const QString kVersion = "1.4.0";
