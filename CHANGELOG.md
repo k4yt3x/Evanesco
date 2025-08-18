@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The application to minimize to tray on close instead of minimize to adhere to conventions.
+- Store the config file in `%APPDATA%` instead of the executable's directory.
 
 ### Fixed
 

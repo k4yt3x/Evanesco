@@ -12,8 +12,13 @@ Settings* Settings::instance() {
 }
 
 Settings::Settings(QObject* parent) : QObject(parent) {
-    QString configPath = QApplication::applicationDirPath() + "/Evanesco.ini";
-    m_settings = new QSettings(configPath, QSettings::IniFormat);
+    m_settings = new QSettings(
+        QSettings::IniFormat,
+        QSettings::UserScope,
+        QCoreApplication::organizationName(),
+        "Evanesco",  // QCoreApplication::applicationName(),
+        this
+    );
 }
 
 Settings::~Settings() {

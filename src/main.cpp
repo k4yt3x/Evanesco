@@ -107,6 +107,7 @@ int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     // app.setApplicationName("Evanesco");
     // app.setApplicationDisplayName("Evanesco");
+    app.setOrganizationName("Evanesco");
     app.setApplicationVersion(kVersion);
 
     QCommandLineParser parser;
