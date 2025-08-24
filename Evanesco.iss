@@ -1,4 +1,4 @@
-#define ApplicationVersion "1.3.0"
+#define ApplicationVersion "1.4.0"
 
 [Setup]
 AppName=Evanesco
@@ -34,7 +34,7 @@ Name: "{userprograms}\Evanesco"; Filename: "{app}\Evanesco.exe"; Tasks: startmen
 Filename: "{app}\Evanesco.exe"; Description: "Launch Evanesco"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{localappdata}\Programs\Evanesco"
+Type: filesandordirs; Name: "{appdata}\Evanesco"
 
 [Code]
 function IsUpgrade: Boolean;
