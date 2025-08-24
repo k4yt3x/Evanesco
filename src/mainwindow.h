@@ -206,5 +206,3 @@ class MainWindow : public QMainWindow {
     // Constants
     static const QColor kHiddenWindowBackgroundColor;
 };
-
-const QString kVersion = "1.4.0";

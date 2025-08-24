@@ -11,6 +11,7 @@
 #include <QTextStream>
 
 #include "settings.h"
+#include "version.h"
 #include "windowhider.h"
 
 enum class Operation {

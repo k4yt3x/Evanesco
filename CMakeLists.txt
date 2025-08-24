@@ -42,6 +42,7 @@ qt_add_executable(Evanesco
     src/tempfile.h
     src/windowhider.cpp
     src/windowhider.h
+    src/version.h
 )
 
 qt_add_resources(Evanesco "resources"

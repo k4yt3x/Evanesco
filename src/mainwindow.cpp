@@ -10,10 +10,14 @@
 #include "procutils.h"
 #include "randutils.h"
 #include "settings.h"
+#include "version.h"
 #include "windowhider.h"
 
 // Define the constant for hidden window background color
 const QColor MainWindow::kHiddenWindowBackgroundColor(128, 0, 128, 100);
+
+// Timeout for all messages shown in the status bar
+constexpr int kStatusMessageTimeout = 2000;
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
@@ -358,9 +362,9 @@ void MainWindow::setupWindowsTable() {
     ui->windowsTableWidget->setHorizontalHeaderLabels(headers);
 
     // Set column widths
-    ui->windowsTableWidget->setColumnWidth(0, 50);   // Icon column
-    ui->windowsTableWidget->setColumnWidth(1, 320);  // Window Title column
-    ui->windowsTableWidget->setColumnWidth(2, 100);  // Handle column
+    ui->windowsTableWidget->setColumnWidth(0, 0);    // Icon column
+    ui->windowsTableWidget->setColumnWidth(1, 370);  // Window Title column
+    ui->windowsTableWidget->setColumnWidth(2, 80);   // Handle column
     ui->windowsTableWidget->setColumnWidth(3, 80);   // PID column
     ui->windowsTableWidget->setColumnWidth(4, 100);  // Architecture column
 
@@ -378,8 +382,8 @@ void MainWindow::setupProcessesTable() {
     ui->processesTableWidget->setHorizontalHeaderLabels(headers);
 
     // Set column widths
-    ui->processesTableWidget->setColumnWidth(0, 50);   // Icon column
-    ui->processesTableWidget->setColumnWidth(1, 200);  // Process Name column
+    ui->processesTableWidget->setColumnWidth(0, 0);    // Icon column
+    ui->processesTableWidget->setColumnWidth(1, 250);  // Process Name column
     ui->processesTableWidget->setColumnWidth(2, 80);   // PID column
     ui->processesTableWidget->setColumnWidth(3, 100);  // Architecture column
 
@@ -603,7 +607,7 @@ void MainWindow::showOperationResult(
         // Success case - only show in status bar
         QString statusMessage = QString("Successfully %1 %2 window(s)!").arg(operationNamePast).arg(successCount);
         // Show for 5 seconds
-        statusBar()->showMessage(statusMessage, 5000);
+        statusBar()->showMessage(statusMessage, kStatusMessageTimeout);
         return;
     }
 
@@ -627,12 +631,12 @@ void MainWindow::showOperationResult(
                               .arg(successCount)
                               .arg(operationName)
                               .arg(failureCount);
-        statusBar()->showMessage(statusMessage, 5000);
+        statusBar()->showMessage(statusMessage, kStatusMessageTimeout);
         QMessageBox::warning(this, "Partial Success", message + failureDetails);
     } else {
         statusMessage = QString("Failed to %1 %2 window(s)").arg(operationName).arg(failureCount);
         QString message = QString("Failed to %1 the following windows:\n\n").arg(operationName);
-        statusBar()->showMessage(statusMessage, 5000);
+        statusBar()->showMessage(statusMessage, kStatusMessageTimeout);
         QMessageBox::critical(this, "Operation Failed", message + failureDetails);
     }
 }
