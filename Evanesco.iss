@@ -34,7 +34,7 @@ Name: "{userprograms}\Evanesco"; Filename: "{app}\Evanesco.exe"; Tasks: startmen
 Filename: "{app}\Evanesco.exe"; Description: "Launch Evanesco"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{appdata}\Evanesco"
+Type: filesandordirs; Name: "{userappdata}\Evanesco"
 
 [Code]
 function IsUpgrade: Boolean;
