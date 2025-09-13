@@ -1,6 +1,7 @@
 #include "settings.h"
 
 #include <QApplication>
+#include <QDir>
 
 Settings* Settings::m_instance = nullptr;
 
@@ -12,13 +13,21 @@ Settings* Settings::instance() {
 }
 
 Settings::Settings(QObject* parent) : QObject(parent) {
-    m_settings = new QSettings(
-        QSettings::IniFormat,
-        QSettings::UserScope,
-        QCoreApplication::organizationName(),
-        "Evanesco",  // QCoreApplication::applicationName(),
-        this
-    );
+    // If Evanesco.ini exists under the executable's directory, run in portable mode
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString portableIniPath = QDir(appDir).absoluteFilePath("Evanesco.ini");
+
+    if (QFileInfo::exists(portableIniPath)) {
+        m_settings = new QSettings(portableIniPath, QSettings::IniFormat, this);
+    } else {
+        m_settings = new QSettings(
+            QSettings::IniFormat,
+            QSettings::UserScope,
+            QCoreApplication::organizationName(),
+            "Evanesco",  // QCoreApplication::applicationName(),
+            this
+        );
+    }
 }
 
 Settings::~Settings() {
